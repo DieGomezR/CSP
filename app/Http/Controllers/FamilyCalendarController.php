@@ -6,6 +6,7 @@ use App\Actions\Calendar\CreateCalendarEvent;
 use App\Http\Requests\Calendar\StoreCalendarEventRequest;
 use App\Models\Workspace;
 use App\Support\Calendar\BuildMonthCalendar;
+use App\Support\Workspaces\BuildRecentActivityFeed;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,8 +15,11 @@ use Inertia\Response;
 
 class FamilyCalendarController extends Controller
 {
-    public function index(Request $request, BuildMonthCalendar $buildMonthCalendar): Response|RedirectResponse
-    {
+    public function index(
+        Request $request,
+        BuildMonthCalendar $buildMonthCalendar,
+        BuildRecentActivityFeed $buildRecentActivityFeed
+    ): Response|RedirectResponse {
         $user = $request->user();
 
         if (! $user->workspaces()->exists()) {
@@ -47,6 +51,16 @@ class FamilyCalendarController extends Controller
                         'birthdate' => $child->birthdate?->toDateString(),
                     ])
                     ->values(),
+                'members' => $workspace->members
+                    ->map(fn ($member) => [
+                        'id' => $member->id,
+                        'user_id' => $member->user_id,
+                        'name' => $member->user?->name,
+                        'email' => $member->user?->email,
+                        'role' => $member->role,
+                        'joined_at' => ($member->joined_at ?? $member->created_at)?->toIso8601String(),
+                    ])
+                    ->values(),
             ],
             'workspaces' => $user->workspaces()
                 ->where('type', 'family')
@@ -54,6 +68,7 @@ class FamilyCalendarController extends Controller
                 ->orderBy('name')
                 ->get(['workspaces.id', 'name', 'type', 'timezone']),
             'calendar' => $buildMonthCalendar->handle($workspace, $month),
+            'recentActivity' => $buildRecentActivityFeed->handle($workspace),
         ]);
     }
 
@@ -78,7 +93,12 @@ class FamilyCalendarController extends Controller
             ->where('type', 'family')
             ->when($workspaceId > 0, fn ($query) => $query->where('workspaces.id', $workspaceId))
             ->withCount(['children', 'members', 'calendarEvents'])
-            ->with(['children:id,workspace_id,name,color,birthdate'])
+            ->with([
+                'children:id,workspace_id,name,color,birthdate,created_at',
+                'members.user:id,name,email',
+                'owner:id,name,email',
+                'calendarEvents:id,workspace_id,creator_id,title,recurrence_type,created_at',
+            ])
             ->orderBy('name')
             ->first();
     }

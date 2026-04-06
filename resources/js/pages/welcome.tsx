@@ -1,6 +1,15 @@
 import { type SharedData } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { CalendarDays, Check, GraduationCap, Shield, Users } from 'lucide-react';
+import {
+    Bell,
+    CalendarDays,
+    Camera,
+    Check,
+    GraduationCap,
+    School,
+    Shield,
+    Users,
+} from 'lucide-react';
 import { useState } from 'react';
 
 const navigationItems = [
@@ -14,69 +23,65 @@ const heroBullets = ['45,000+ school calendars', 'Syncs to any calendar app', 'S
 
 const familySegments = [
     {
-        icon: '👨‍👩‍👧',
+        icon: Users,
         title: 'Busy Families',
         body: 'School, sports, activities, carpools. Everyone sees the same calendar and caregivers can stay in sync too.',
         accent: 'text-teal-800',
         background: 'bg-[#dffaf0]',
-        link: 'Learn more →',
     },
     {
-        icon: '⚖️',
+        icon: Shield,
         title: 'Co-Parents',
         body: 'Custody schedules, documented messaging, expense tracking, and court-ready exports when they are needed.',
         accent: 'text-[#3556d4]',
         background: 'bg-[#dfebff]',
-        link: 'Learn more →',
     },
     {
-        icon: '⚽',
+        icon: CalendarDays,
         title: 'Teams & Clubs',
         body: 'One calendar for the whole team. Parents subscribe once and practices, games, and changes stay synced.',
         accent: 'text-[#d96b1c]',
         background: 'bg-[#fff1dc]',
-        link: 'Learn more →',
     },
     {
-        icon: '🏫',
+        icon: GraduationCap,
         title: 'PTAs & Schools',
         body: 'Member directory, event management, volunteer signups, and announcements without the spreadsheet chaos.',
         accent: 'text-[#7a49d9]',
         background: 'bg-[#efe2ff]',
-        link: 'Learn more →',
     },
 ];
 
 const featureCards = [
     {
-        icon: '🏫',
+        icon: School,
         title: 'School Calendar Sync',
         body: "45,000+ school districts. Import your school's calendar with one click - holidays, early dismissals, and conferences.",
     },
     {
-        icon: '📷',
+        icon: Camera,
         title: 'AI Calendar Import',
         body: 'Snap a photo of any schedule and pull dates out automatically for sports, activities, and school flyers.',
     },
     {
-        icon: '🗓️',
+        icon: CalendarDays,
         title: 'Syncs Everywhere',
         body: 'Subscribe in Google Calendar, Apple, or Outlook. Changes sync automatically with one source of truth.',
     },
     {
-        icon: '👶',
+        icon: Users,
         title: 'Child-by-Child View',
         body: "Each kid gets their own color and schedule so your calendar stays readable instead of collapsing into noise.",
     },
     {
-        icon: '🧑‍🍼',
+        icon: Shield,
         title: 'Share with Caregivers',
         body: 'Grandparents, nannies, and babysitters can get view-only access and you can revoke it any time.',
     },
     {
-        icon: '🔔',
+        icon: Bell,
         title: 'Smart Reminders',
-        body: "Morning digest of the day ahead and change alerts without getting pinged at midnight.",
+        body: 'Morning digest of the day ahead and change alerts without getting pinged at midnight.',
     },
 ];
 
@@ -116,7 +121,7 @@ const plans = {
             features: [
                 'Everything in Essential',
                 'AI calendar import (photo)',
-                'Activity & sports tracking',
+                'Activity and sports tracking',
                 'SMS reminders',
                 'Expense tracking',
                 'Secure family messaging',
@@ -158,7 +163,7 @@ const plans = {
             features: [
                 'Everything in Essential',
                 'AI calendar import (photo)',
-                'Activity & sports tracking',
+                'Activity and sports tracking',
                 'SMS reminders',
                 'Expense tracking',
                 'Secure family messaging',
@@ -233,41 +238,6 @@ function NavBar({ authUser }: { authUser: SharedData['auth']['user'] | undefined
     );
 }
 
-function InstallPrompt({ ctaHref }: { ctaHref: string }) {
-    return (
-        <div className="fixed right-6 bottom-6 left-6 z-30 hidden justify-center lg:flex">
-            <div className="flex w-full max-w-[430px] items-center gap-4 rounded-[1.4rem] border border-slate-200 bg-white px-4 py-4 shadow-[0_24px_55px_-35px_rgba(15,23,42,0.45)]">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-black text-sm font-black text-white">KS</div>
-                <div className="min-w-0 flex-1">
-                    <p className="text-base font-black text-slate-800">Install KidSchedule</p>
-                    <p className="text-sm text-slate-500">Add to home screen for quick access, even offline.</p>
-                </div>
-                <button type="button" className="text-sm font-bold text-slate-400 transition hover:text-slate-700">
-                    Not now
-                </button>
-                <a
-                    href={ctaHref}
-                    className="rounded-xl bg-[#67d2c3] px-5 py-2.5 text-sm font-black text-white transition hover:bg-[#55c8b7]"
-                >
-                    Install
-                </a>
-            </div>
-        </div>
-    );
-}
-
-function FloatingCta({ href }: { href: string }) {
-    return (
-        <a
-            href={href}
-            className="fixed right-6 bottom-6 z-30 inline-flex items-center gap-3 rounded-full bg-[linear-gradient(90deg,#63d3c4_0%,#5bcbb8_100%)] px-6 py-4 text-sm font-black text-white shadow-[0_20px_45px_-20px_rgba(77,191,174,0.8)] transition hover:translate-y-[-1px]"
-        >
-            <CalendarDays className="size-4" />
-            Start Free Trial
-        </a>
-    );
-}
-
 export default function Welcome() {
     const { auth } = usePage<SharedData>().props;
     const [billingMode, setBillingMode] = useState<'parent' | 'family'>('parent');
@@ -332,10 +302,10 @@ export default function Welcome() {
                                     key={item.title}
                                     className={`rounded-[1.8rem] p-8 shadow-[0_22px_45px_-38px_rgba(15,23,42,0.45)] ${item.background}`}
                                 >
-                                    <div className="text-3xl">{item.icon}</div>
+                                    <item.icon className={`size-9 ${item.accent}`} />
                                     <h3 className={`mt-7 text-3xl font-black tracking-tight ${item.accent}`}>{item.title}</h3>
                                     <p className={`mt-4 max-w-md text-lg leading-8 ${item.accent} opacity-85`}>{item.body}</p>
-                                    <p className={`mt-7 text-base font-black ${item.accent}`}>{item.link}</p>
+                                    <p className={`mt-7 text-base font-black ${item.accent}`}>Learn more</p>
                                 </article>
                             ))}
                         </div>
@@ -352,8 +322,11 @@ export default function Welcome() {
 
                             <div className="mt-12 grid gap-5 lg:grid-cols-3">
                                 {featureCards.map((feature) => (
-                                    <article className="rounded-[1.7rem] border border-slate-100 bg-white p-7 shadow-[0_24px_60px_-45px_rgba(15,23,42,0.35)]" key={feature.title}>
-                                        <div className="text-3xl">{feature.icon}</div>
+                                    <article
+                                        className="rounded-[1.7rem] border border-slate-100 bg-white p-7 shadow-[0_24px_60px_-45px_rgba(15,23,42,0.35)]"
+                                        key={feature.title}
+                                    >
+                                        <feature.icon className="size-8 text-[#a38fc9]" />
                                         <h3 className="mt-6 text-2xl font-black tracking-tight text-slate-900">{feature.title}</h3>
                                         <p className="mt-4 text-lg leading-8 text-slate-500">{feature.body}</p>
                                     </article>
@@ -454,10 +427,10 @@ export default function Welcome() {
                                         key={post.title}
                                         className="rounded-[1.8rem] border border-slate-100 bg-white p-7 shadow-[0_24px_60px_-45px_rgba(15,23,42,0.35)]"
                                     >
-                                        <p className="text-sm font-bold text-slate-400">{post.date} • KidSchedule Team</p>
+                                        <p className="text-sm font-bold text-slate-400">{post.date} - KidSchedule Team</p>
                                         <h3 className="mt-4 text-3xl font-black tracking-tight text-slate-900">{post.title}</h3>
                                         <p className="mt-4 text-lg leading-8 text-slate-500">{post.excerpt}</p>
-                                        <p className="mt-5 text-base font-black text-slate-800">Read More →</p>
+                                        <p className="mt-5 text-base font-black text-slate-800">Read More</p>
                                     </article>
                                 ))}
                             </div>
@@ -535,14 +508,38 @@ export default function Welcome() {
                             </div>
 
                             <div className="mt-14 border-t border-white/8 pt-10 text-sm text-slate-500">
-                                © 2026 KidSchedule. Terms · Privacy
+                                © 2026 KidSchedule. Terms and Privacy
                             </div>
                         </footer>
                     </section>
                 </main>
 
-                <InstallPrompt ctaHref={primaryHref} />
-                <FloatingCta href={primaryHref} />
+                <div className="fixed right-6 bottom-6 left-6 z-30 hidden justify-center lg:flex">
+                    <div className="flex w-full max-w-[430px] items-center gap-4 rounded-[1.4rem] border border-slate-200 bg-white px-4 py-4 shadow-[0_24px_55px_-35px_rgba(15,23,42,0.45)]">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-black text-sm font-black text-white">KS</div>
+                        <div className="min-w-0 flex-1">
+                            <p className="text-base font-black text-slate-800">Install KidSchedule</p>
+                            <p className="text-sm text-slate-500">Add to home screen for quick access, even offline.</p>
+                        </div>
+                        <button type="button" className="text-sm font-bold text-slate-400 transition hover:text-slate-700">
+                            Not now
+                        </button>
+                        <a
+                            href={primaryHref}
+                            className="rounded-xl bg-[#67d2c3] px-5 py-2.5 text-sm font-black text-white transition hover:bg-[#55c8b7]"
+                        >
+                            Install
+                        </a>
+                    </div>
+                </div>
+
+                <a
+                    href={primaryHref}
+                    className="fixed right-6 bottom-6 z-30 inline-flex items-center gap-3 rounded-full bg-[linear-gradient(90deg,#63d3c4_0%,#5bcbb8_100%)] px-6 py-4 text-sm font-black text-white shadow-[0_20px_45px_-20px_rgba(77,191,174,0.8)] transition hover:translate-y-[-1px]"
+                >
+                    <CalendarDays className="size-4" />
+                    Start Free Trial
+                </a>
             </div>
         </>
     );

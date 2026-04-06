@@ -1,41 +1,41 @@
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem, type SharedData } from '@/types';
+import { type SharedData } from '@/types';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { CalendarDays, ChevronLeft, ChevronRight, LoaderCircle, Repeat, Users } from 'lucide-react';
-
-const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Family Calendar',
-        href: '/dashboard',
-    },
-];
-
-const recurrenceOptions = [
-    { value: 'none', label: 'Does not repeat' },
-    { value: 'daily', label: 'Repeats daily' },
-    { value: 'weekly', label: 'Repeats weekly' },
-    { value: 'monthly', label: 'Repeats monthly' },
-] as const;
-
-const weekdayOptions = [
-    { value: 0, label: 'Sun' },
-    { value: 1, label: 'Mon' },
-    { value: 2, label: 'Tue' },
-    { value: 3, label: 'Wed' },
-    { value: 4, label: 'Thu' },
-    { value: 5, label: 'Fri' },
-    { value: 6, label: 'Sat' },
-];
+import {
+    Bell,
+    CalendarDays,
+    ChevronLeft,
+    ChevronRight,
+    ClipboardList,
+    Cog,
+    Link2,
+    LoaderCircle,
+    LogOut,
+    Palette,
+    Pencil,
+    Repeat,
+    Settings2,
+    Sparkles,
+    Users,
+    UserPlus,
+} from 'lucide-react';
 
 type WorkspaceChild = {
     id: number;
     name: string;
     color: string;
     birthdate: string | null;
+};
+
+type WorkspaceMember = {
+    id: number;
+    user_id: number;
+    name: string | null;
+    email: string | null;
+    role: string;
+    joined_at: string | null;
 };
 
 type WorkspaceSummary = {
@@ -83,7 +83,6 @@ type CalendarPayload = {
     next_month: string;
     weekday_labels: string[];
     weeks: CalendarDay[][];
-    occurrences: CalendarOccurrence[];
     upcoming: CalendarOccurrence[];
     summary: {
         occurrences_count: number;
@@ -97,6 +96,16 @@ type CalendarPayload = {
     };
 };
 
+type ActivityItem = {
+    id: string;
+    icon: 'workspace' | 'member' | 'child' | 'calendar';
+    title: string;
+    detail: string;
+    relative_time: string;
+    timestamp_iso: string;
+    highlighted: boolean;
+};
+
 type WorkspacePayload = {
     id: number;
     name: string;
@@ -106,12 +115,14 @@ type WorkspacePayload = {
     members_count: number;
     events_count: number;
     children: WorkspaceChild[];
+    members: WorkspaceMember[];
 };
 
 interface DashboardProps {
     workspace: WorkspacePayload;
     workspaces: WorkspaceSummary[];
     calendar: CalendarPayload;
+    recentActivity: ActivityItem[];
 }
 
 interface CalendarEventForm {
@@ -130,6 +141,60 @@ interface CalendarEventForm {
     recurrence_days_of_week: number[];
 }
 
+const topNavigation = [
+    { label: 'Dashboard', href: '/dashboard', active: true },
+    { label: 'Calendar', href: '#calendar-view' },
+    { label: 'Expenses', href: '#calendar-export' },
+    { label: 'Messages', href: '#family-members' },
+    { label: 'Moments', href: '#children' },
+    { label: 'Mediation', href: '#settings' },
+    { label: 'Requests', href: '#recent-activity' },
+] as const;
+
+const quickActions = [
+    { title: 'View Calendar', href: '#calendar-view', icon: CalendarDays },
+    { title: 'Setup Schedule', href: '#settings', icon: Cog },
+    { title: 'Add Child', href: '#children', icon: Sparkles },
+    { title: 'Add Parent', href: '#family-members', icon: UserPlus },
+    { title: 'Caregivers', href: '#family-members', icon: Users },
+    { title: 'Log Transfer', href: '#recent-activity', icon: ClipboardList },
+] as const;
+
+const recurrenceOptions = [
+    { value: 'none', label: 'Does not repeat' },
+    { value: 'daily', label: 'Repeats daily' },
+    { value: 'weekly', label: 'Repeats weekly' },
+    { value: 'monthly', label: 'Repeats monthly' },
+] as const;
+
+const weekdayOptions = [
+    { value: 0, label: 'Sun' },
+    { value: 1, label: 'Mon' },
+    { value: 2, label: 'Tue' },
+    { value: 3, label: 'Wed' },
+    { value: 4, label: 'Thu' },
+    { value: 5, label: 'Fri' },
+    { value: 6, label: 'Sat' },
+];
+
+const appearanceCards = [
+    {
+        title: 'Warm & Friendly',
+        subtitle: 'Soft, rounded, inviting',
+        active: true,
+    },
+    {
+        title: 'Modern',
+        subtitle: 'Dense, compact, dashboard',
+        active: false,
+    },
+    {
+        title: 'Minimal',
+        subtitle: 'Flat, no cards, ultra-compact',
+        active: false,
+    },
+] as const;
+
 const colorPalette = ['#4DBFAE', '#FF8A5B', '#5B8DEF', '#9B6BFF', '#F2C94C', '#EB5757'];
 
 function applyAlpha(hex: string, alpha: string) {
@@ -146,8 +211,126 @@ function replaceDateInDateTime(value: string, nextDate: string, fallbackTime: st
     return `${nextDate}T${time}`;
 }
 
-export default function Dashboard({ workspace, workspaces, calendar }: DashboardProps) {
-    const { flash } = usePage<SharedData>().props;
+function SectionCard({
+    id,
+    title,
+    description,
+    icon: Icon,
+    action,
+    children,
+    className = '',
+}: {
+    id?: string;
+    title: string;
+    description?: string;
+    icon: typeof CalendarDays;
+    action?: React.ReactNode;
+    children: React.ReactNode;
+    className?: string;
+}) {
+    return (
+        <section
+            id={id}
+            className={`rounded-[2rem] border border-[#edf3f2] bg-white p-6 shadow-[0_26px_60px_-52px_rgba(15,23,42,0.38)] md:p-7 ${className}`}
+        >
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div>
+                    <div className="flex items-center gap-3">
+                        <div className="rounded-full bg-[#f6fbfb] p-2.5 text-[#a38fc9]">
+                            <Icon className="size-5" />
+                        </div>
+                        <h2 className="text-[2rem] font-black tracking-tight text-slate-900">{title}</h2>
+                    </div>
+                    {description && <p className="mt-4 text-lg leading-8 text-slate-400">{description}</p>}
+                </div>
+                {action}
+            </div>
+
+            <div className="mt-6">{children}</div>
+        </section>
+    );
+}
+
+function QuickActionCard({
+    href,
+    title,
+    icon: Icon,
+}: {
+    href: string;
+    title: string;
+    icon: typeof CalendarDays;
+}) {
+    return (
+        <a
+            href={href}
+            className="group flex min-h-40 flex-col items-center justify-center rounded-[1.7rem] border border-[#dceceb] bg-[#eaf8f7] px-6 py-8 text-center transition hover:border-[#8ed7ca] hover:bg-[#effaf8]"
+        >
+            <div className="rounded-full bg-white/70 p-3 text-[#9b8fd0] shadow-sm transition group-hover:scale-105">
+                <Icon className="size-6" />
+            </div>
+            <p className="mt-5 text-[1.85rem] font-black tracking-tight text-slate-900">{title}</p>
+        </a>
+    );
+}
+
+function DetailField({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="grid gap-3">
+            <p className="text-base font-bold text-slate-400">{label}</p>
+            <div className="rounded-[1.2rem] border border-[#cfe9e4] bg-white px-4 py-4 text-[1.15rem] font-semibold text-slate-800">
+                {value}
+            </div>
+        </div>
+    );
+}
+
+function AppearanceCard({ title, subtitle, active }: { title: string; subtitle: string; active: boolean }) {
+    return (
+        <div
+            className={`rounded-[1.45rem] border px-6 py-5 transition ${
+                active ? 'border-[#67d2c3] bg-[#eefbfa]' : 'border-[#dcecec] bg-white'
+            }`}
+        >
+            <div className="rounded-[1rem] border border-slate-200 bg-[#f9fbfc] p-3">
+                <div className="space-y-2">
+                    <div className="h-2 w-18 rounded-full bg-[#76d4c8]" />
+                    <div className="h-2 w-26 rounded-full bg-slate-200" />
+                </div>
+            </div>
+            <p className="mt-4 text-xl font-black tracking-tight text-slate-900">{title}</p>
+            <p className="mt-2 text-base text-slate-400">{subtitle}</p>
+        </div>
+    );
+}
+
+function ActivityRow({ item }: { item: ActivityItem }) {
+    const iconMap = {
+        workspace: ClipboardList,
+        member: Users,
+        child: Sparkles,
+        calendar: CalendarDays,
+    } as const;
+
+    const Icon = iconMap[item.icon];
+
+    return (
+        <div className={`grid grid-cols-[auto_1fr] gap-4 px-4 py-4 ${item.highlighted ? 'bg-[#eef8f7]' : 'bg-white'}`}>
+            <div className="mt-1 flex h-9 w-9 items-center justify-center rounded-full bg-[#d9e9ff] text-[#5b8def]">
+                <Icon className="size-4" />
+            </div>
+            <div className="min-w-0 border-b border-[#e7f0ef] pb-4 last:border-b-0 last:pb-0">
+                <p className="text-xl font-semibold text-slate-900">{item.title}</p>
+                <div className="mt-1 flex flex-wrap items-center gap-3 text-base text-slate-400">
+                    <span>{item.detail}</span>
+                    <span>{item.relative_time}</span>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+export default function Dashboard({ workspace, workspaces, calendar, recentActivity }: DashboardProps) {
+    const { auth, flash } = usePage<SharedData>().props;
     const { data, setData, post, processing, errors, reset } = useForm<CalendarEventForm>({
         title: '',
         description: '',
@@ -218,304 +401,449 @@ export default function Dashboard({ workspace, workspaces, calendar }: Dashboard
         setData('ends_at', replaceDateInDateTime(data.ends_at, date, '10:00'));
     };
 
+    const workspaceTitle = workspace.name.replace(/family$/i, '').trim() || workspace.name;
+    const activeWorkspaceCount = workspaces.length;
+
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Family Calendar" />
+        <>
+            <Head title="Family Dashboard" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <section className="overflow-hidden rounded-[2rem] border border-white/80 bg-[linear-gradient(140deg,#effcf7_0%,#edf7ff_54%,#fff5ea_100%)] p-6 shadow-[0_35px_80px_-45px_rgba(34,71,110,0.45)] md:p-8">
-                    <div className="grid gap-8 xl:grid-cols-[1.15fr_0.85fr]">
-                        <div>
-                            <p className="text-xs font-extrabold tracking-[0.24em] text-teal-700 uppercase">Family workspace</p>
-                            <h1 className="mt-3 max-w-3xl text-3xl leading-tight font-black tracking-tight text-slate-950 md:text-5xl">
-                                {workspace.name} keeps school, sports, and everyone&apos;s stuff in one place.
-                            </h1>
-                            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 md:text-base">
-                                This is now the real household calendar: children, recurring events, and a monthly planning view that already works
-                                like a product instead of a starter kit.
-                            </p>
+            <div className="min-h-screen bg-[#eef8f6] text-slate-900">
+                <header className="border-b border-[#dceceb] bg-white">
+                    <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-8 gap-y-5 px-6 py-7">
+                        <Link
+                            href={route('dashboard')}
+                            className="text-[2.8rem] font-black tracking-tight text-transparent bg-[linear-gradient(90deg,#68d2c1_0%,#69a7ff_100%)] bg-clip-text"
+                        >
+                            KidSchedule
+                        </Link>
 
-                            {flash.status && (
-                                <div className="mt-5 inline-flex rounded-full border border-teal-200 bg-white/85 px-4 py-2 text-sm font-semibold text-teal-800 shadow-sm">
-                                    {flash.status}
+                        <nav className="flex flex-1 flex-wrap items-center gap-6 text-[1.2rem] font-black text-[#55c2b5]">
+                            {topNavigation.map((item) => (
+                                <a
+                                    key={item.label}
+                                    href={item.href}
+                                    className={item.active ? 'text-[#46b8aa]' : 'text-[#55c2b5]/95 transition hover:text-[#46b8aa]'}
+                                >
+                                    {item.label}
+                                </a>
+                            ))}
+                        </nav>
+
+                        <div className="flex items-center gap-3">
+                            <button
+                                type="button"
+                                className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#67d2c3] text-white shadow-sm"
+                            >
+                                <Bell className="size-5" />
+                            </button>
+                            <Link
+                                href={route('logout')}
+                                method="post"
+                                as="button"
+                                className="inline-flex items-center gap-2 rounded-2xl bg-[#67d2c3] px-6 py-3 text-[1.1rem] font-black text-white shadow-sm"
+                            >
+                                <LogOut className="size-4" />
+                                Logout
+                            </Link>
+                        </div>
+                    </div>
+                </header>
+
+                <main className="mx-auto max-w-5xl px-6 py-6">
+                    <section className="flex flex-col gap-5 border-b border-[#dceceb] pb-6 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex flex-wrap items-center gap-4">
+                            <h1 className="text-[2.8rem] font-black tracking-tight text-slate-900">{workspaceTitle}</h1>
+                            <button
+                                type="button"
+                                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[#67d2c3] text-white shadow-sm"
+                            >
+                                <Pencil className="size-4" />
+                            </button>
+                            <div className="rounded-full bg-white px-4 py-2 text-sm font-black text-slate-500 shadow-sm">
+                                {activeWorkspaceCount} workspace{activeWorkspaceCount === 1 ? '' : 's'}
+                            </div>
+                        </div>
+
+                        <div className="inline-flex rounded-full bg-white p-1.5 shadow-sm">
+                            <button type="button" className="rounded-full bg-[#67d2c3] px-6 py-3 text-[1.05rem] font-black text-slate-900">
+                                Calendar
+                            </button>
+                            <button type="button" className="rounded-full px-6 py-3 text-[1.05rem] font-black text-slate-400">
+                                Setup Schedule
+                            </button>
+                        </div>
+                    </section>
+
+                    {flash.status && (
+                        <div className="mt-6 rounded-[1.35rem] border border-[#caece6] bg-white px-5 py-4 text-[1.05rem] font-semibold text-[#3da999] shadow-sm">
+                            {flash.status}
+                        </div>
+                    )}
+
+                    <section className="mt-6 grid gap-4 md:grid-cols-2">
+                        {quickActions.map((action) => (
+                            <QuickActionCard key={action.title} href={action.href} title={action.title} icon={action.icon} />
+                        ))}
+                    </section>
+
+                    <div className="mt-6 space-y-6">
+                        <SectionCard
+                            id="children"
+                            title="Children"
+                            icon={Sparkles}
+                            action={
+                                <button
+                                    type="button"
+                                    className="rounded-2xl bg-[#67d2c3] px-6 py-3 text-[1.1rem] font-black text-white shadow-sm"
+                                >
+                                    + Add
+                                </button>
+                            }
+                        >
+                            {workspace.children.length > 0 ? (
+                                <div className="space-y-4">
+                                    {workspace.children.map((child) => (
+                                        <div
+                                            key={child.id}
+                                            className="flex flex-wrap items-center justify-between gap-4 rounded-[1.4rem] bg-[#eef8f7] px-5 py-5"
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div
+                                                    className="flex h-14 w-14 items-center justify-center rounded-full text-xl font-black text-white"
+                                                    style={{ backgroundColor: child.color }}
+                                                >
+                                                    {child.name.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <p className="text-[1.45rem] font-black tracking-tight text-slate-900">{child.name}</p>
+                                                    <p className="text-base text-slate-400">
+                                                        {child.birthdate ? new Date(child.birthdate).toLocaleDateString() : 'Birthdate not added yet'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <button type="button" className="rounded-2xl bg-[#67d2c3] px-5 py-3 text-base font-black text-white">
+                                                    Edit
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="rounded-[1.4rem] bg-[#fbfefe] px-5 py-12 text-center text-[1.2rem] text-slate-400">
+                                    No children added yet
                                 </div>
                             )}
+                        </SectionCard>
 
-                            <div className="mt-6 flex flex-wrap gap-3">
-                                {workspace.children.map((child) => (
-                                    <div
-                                        key={child.id}
-                                        className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/80 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm"
+                        <SectionCard
+                            id="family-members"
+                            title="Family Members"
+                            icon={Users}
+                            action={
+                                <button
+                                    type="button"
+                                    className="rounded-2xl bg-[#67d2c3] px-6 py-3 text-[1.1rem] font-black text-white shadow-sm"
+                                >
+                                    + Add
+                                </button>
+                            }
+                        >
+                            <div className="space-y-4">
+                                {workspace.members.map((member, index) => {
+                                    const isCurrentUser = member.user_id === auth.user.id;
+                                    const avatarPalette = ['#5B8DEF', '#FF7D7D', '#67D2C3', '#9B6BFF'];
+                                    const avatarColor = avatarPalette[index % avatarPalette.length];
+
+                                    return (
+                                        <div
+                                            key={member.id}
+                                            className="flex flex-wrap items-center justify-between gap-4 rounded-[1.4rem] bg-[#eef8f7] px-5 py-5"
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div
+                                                    className="flex h-14 w-14 items-center justify-center rounded-full text-xl font-black text-white"
+                                                    style={{ backgroundColor: avatarColor }}
+                                                >
+                                                    {(member.name ?? '?').charAt(0).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <p className="text-[1.45rem] font-black tracking-tight text-slate-900">
+                                                        {member.name ?? 'Unknown member'}{' '}
+                                                        <span className="text-base font-semibold text-slate-400">{isCurrentUser ? 'You' : member.role}</span>
+                                                    </p>
+                                                    <p className="text-base text-slate-400">{member.email ?? 'No email on file'}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-3">
+                                                {!isCurrentUser && (
+                                                    <>
+                                                        <button
+                                                            type="button"
+                                                            className="rounded-2xl bg-[#67d2c3] px-5 py-3 text-base font-black text-white"
+                                                        >
+                                                            Edit
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className="rounded-2xl bg-[#67d2c3] px-5 py-3 text-base font-black text-white"
+                                                        >
+                                                            Remove
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </SectionCard>
+
+                        <SectionCard id="settings" title="Settings" icon={Settings2}>
+                            <div className="grid gap-5 md:grid-cols-2">
+                                <DetailField label="Timezone" value={workspace.timezone} />
+                                <DetailField label="Transition Day" value="Sunday" />
+                                <DetailField label="Transition Time" value="06:00 p. m." />
+                                <DetailField label="Week Starts On" value="Sunday" />
+                                <DetailField label="Time Format" value="12 hour (6 PM)" />
+                            </div>
+
+                            <div className="mt-6 space-y-4 text-[1.15rem] font-semibold text-slate-900">
+                                <div className="flex items-center gap-3">
+                                    <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[#67d2c3] text-white">✓</span>
+                                    Email me when the schedule changes
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[#67d2c3] text-white">✓</span>
+                                    Remind me the day before custody changes
+                                </div>
+                            </div>
+                        </SectionCard>
+
+                        <SectionCard id="appearance" title="Appearance" icon={Palette}>
+                            <div className="grid gap-4 md:grid-cols-3">
+                                {appearanceCards.map((card) => (
+                                    <AppearanceCard key={card.title} title={card.title} subtitle={card.subtitle} active={card.active} />
+                                ))}
+                            </div>
+                            <p className="mt-4 text-base text-slate-400">Auto-saves on click.</p>
+                        </SectionCard>
+
+                        <SectionCard
+                            id="calendar-export"
+                            title="Calendar Export Preferences"
+                            icon={CalendarDays}
+                            description="Control how events appear when synced to Google Calendar, Outlook, etc."
+                        >
+                            <div className="grid gap-5 md:grid-cols-2">
+                                <DetailField label="Transition Event Duration" value="15 min" />
+                                <DetailField label="Transitions Show As" value="Free" />
+                                <DetailField label="Child Events Show As" value="Always Busy" />
+                            </div>
+                            <p className="mt-4 text-base text-slate-400">
+                                School events always show as "free". Caregiver calendars always show as "free".
+                            </p>
+                        </SectionCard>
+
+                        <SectionCard
+                            id="sync-phone"
+                            title="Sync to Phone"
+                            icon={Link2}
+                            description="Subscribe to your calendar in iPhone, Google Calendar, or Outlook. Updates sync automatically."
+                        >
+                            <button
+                                type="button"
+                                className="rounded-2xl bg-[#67d2c3] px-7 py-4 text-[1.1rem] font-black text-white shadow-sm"
+                            >
+                                + Create Sync Link
+                            </button>
+                        </SectionCard>
+
+                        <SectionCard
+                            id="calendar-view"
+                            title="Calendar View"
+                            icon={CalendarDays}
+                            description="This is the real calendar engine underneath the setup screens. Recurring items already expand across the month."
+                        >
+                            <div className="flex flex-wrap items-center justify-between gap-4">
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <Link
+                                        href={route('dashboard', { workspace: workspace.id, month: calendar.previous_month })}
+                                        className="inline-flex items-center gap-2 rounded-2xl border border-[#d5e8e3] bg-white px-4 py-3 text-base font-black text-slate-600"
                                     >
-                                        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: child.color }} />
-                                        {child.name}
+                                        <ChevronLeft className="size-4" />
+                                        Previous
+                                    </Link>
+                                    <div className="rounded-2xl bg-[#67d2c3] px-5 py-3 text-base font-black text-slate-900">
+                                        {calendar.month_label}
+                                    </div>
+                                    <Link
+                                        href={route('dashboard', { workspace: workspace.id, month: calendar.next_month })}
+                                        className="inline-flex items-center gap-2 rounded-2xl border border-[#d5e8e3] bg-white px-4 py-3 text-base font-black text-slate-600"
+                                    >
+                                        Next
+                                        <ChevronRight className="size-4" />
+                                    </Link>
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-3">
+                                    <div className="rounded-[1.2rem] bg-[#eef8f7] px-4 py-4 text-center">
+                                        <p className="text-sm font-bold uppercase tracking-[0.16em] text-slate-400">Events</p>
+                                        <p className="mt-2 text-3xl font-black text-slate-900">{calendar.summary.occurrences_count}</p>
+                                    </div>
+                                    <div className="rounded-[1.2rem] bg-[#eef8f7] px-4 py-4 text-center">
+                                        <p className="text-sm font-bold uppercase tracking-[0.16em] text-slate-400">Series</p>
+                                        <p className="mt-2 text-3xl font-black text-slate-900">{calendar.summary.series_count}</p>
+                                    </div>
+                                    <div className="rounded-[1.2rem] bg-[#eef8f7] px-4 py-4 text-center">
+                                        <p className="text-sm font-bold uppercase tracking-[0.16em] text-slate-400">Kids</p>
+                                        <p className="mt-2 text-3xl font-black text-slate-900">{calendar.summary.children_count}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-6 grid grid-cols-7 gap-2 text-center">
+                                {calendar.weekday_labels.map((label) => (
+                                    <div key={label} className="py-2 text-sm font-black uppercase tracking-[0.18em] text-slate-400">
+                                        {label}
                                     </div>
                                 ))}
                             </div>
 
-                            <div className="mt-8 flex flex-wrap items-center gap-3">
-                                <Link
-                                    href={route('dashboard', { workspace: workspace.id, month: calendar.previous_month })}
-                                    className="inline-flex h-11 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-teal-200 hover:text-teal-800"
-                                >
-                                    <ChevronLeft className="size-4" />
-                                    Previous month
-                                </Link>
-                                <div className="inline-flex h-11 items-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white shadow-sm">
-                                    {calendar.month_label}
-                                </div>
-                                <Link
-                                    href={route('dashboard', { workspace: workspace.id, month: calendar.next_month })}
-                                    className="inline-flex h-11 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-teal-200 hover:text-teal-800"
-                                >
-                                    Next month
-                                    <ChevronRight className="size-4" />
-                                </Link>
-                            </div>
-                        </div>
-
-                        <div className="grid gap-4 sm:grid-cols-2">
-                            <article className="rounded-[1.5rem] border border-white/70 bg-white/80 p-5 shadow-sm backdrop-blur">
-                                <p className="text-xs font-extrabold tracking-[0.2em] text-slate-500 uppercase">This month</p>
-                                <p className="mt-3 text-4xl font-black text-slate-950">{calendar.summary.occurrences_count}</p>
-                                <p className="mt-2 text-sm leading-6 text-slate-600">Scheduled occurrences already visible in the month grid.</p>
-                            </article>
-                            <article className="rounded-[1.5rem] border border-white/70 bg-white/80 p-5 shadow-sm backdrop-blur">
-                                <p className="text-xs font-extrabold tracking-[0.2em] text-slate-500 uppercase">Recurring series</p>
-                                <p className="mt-3 text-4xl font-black text-slate-950">{calendar.summary.series_count}</p>
-                                <p className="mt-2 text-sm leading-6 text-slate-600">Templates-like recurring schedules powering the base calendar.</p>
-                            </article>
-                            <article className="rounded-[1.5rem] border border-white/70 bg-white/80 p-5 shadow-sm backdrop-blur">
-                                <p className="text-xs font-extrabold tracking-[0.2em] text-slate-500 uppercase">Children in plan</p>
-                                <p className="mt-3 text-4xl font-black text-slate-950">{workspace.children_count}</p>
-                                <p className="mt-2 text-sm leading-6 text-slate-600">Color-coded profiles that keep the calendar readable.</p>
-                            </article>
-                            <article className="rounded-[1.5rem] border border-white/70 bg-white/80 p-5 shadow-sm backdrop-blur">
-                                <p className="text-xs font-extrabold tracking-[0.2em] text-slate-500 uppercase">Members</p>
-                                <p className="mt-3 text-4xl font-black text-slate-950">{workspace.members_count}</p>
-                                <p className="mt-2 text-sm leading-6 text-slate-600">Adults and caregivers that will eventually share this plan.</p>
-                            </article>
-                        </div>
-                    </div>
-                </section>
-
-                <div className="grid gap-6 2xl:grid-cols-[minmax(0,1.45fr)_minmax(22rem,0.8fr)]">
-                    <section className="rounded-[1.75rem] border border-slate-200/80 bg-white p-5 shadow-[0_24px_80px_-50px_rgba(27,53,87,0.55)] md:p-6">
-                        <div className="flex flex-col gap-4 border-b border-slate-100 pb-5 lg:flex-row lg:items-end lg:justify-between">
-                            <div>
-                                <p className="text-xs font-extrabold tracking-[0.2em] text-slate-500 uppercase">Monthly view</p>
-                                <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Family calendar</h2>
-                                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-                                    Click any day cell to prefill the event form. Recurring items are expanded server-side so the month stays
-                                    trustworthy.
-                                </p>
-                            </div>
-
-                            {workspaces.length > 1 && (
-                                <div className="flex flex-wrap gap-2">
-                                    {workspaces.map((item) => {
-                                        const isActive = item.id === workspace.id;
-
-                                        return (
-                                            <Link
-                                                key={item.id}
-                                                href={route('dashboard', { workspace: item.id, month: calendar.month })}
-                                                className={`inline-flex rounded-full px-4 py-2 text-sm font-semibold transition ${
-                                                    isActive
-                                                        ? 'bg-slate-950 text-white shadow-sm'
-                                                        : 'border border-slate-200 bg-slate-50 text-slate-700 hover:border-teal-200 hover:text-teal-800'
-                                                }`}
+                            <div className="space-y-2">
+                                {calendar.weeks.map((week, weekIndex) => (
+                                    <div key={`${calendar.month}-${weekIndex}`} className="grid grid-cols-7 gap-2">
+                                        {week.map((day) => (
+                                            <button
+                                                key={day.date}
+                                                type="button"
+                                                onClick={() => selectDay(day.date)}
+                                                className={`min-h-30 rounded-[1.3rem] border p-3 text-left transition ${
+                                                    day.is_current_month
+                                                        ? 'border-[#dceceb] bg-[#fbfefe] hover:border-[#91dacc] hover:bg-white'
+                                                        : 'border-[#eef3f3] bg-[#f8fbfb] text-slate-300'
+                                                } ${day.is_today ? 'ring-2 ring-[#9bdbd0] ring-offset-2 ring-offset-[#eef8f6]' : ''}`}
                                             >
-                                                {item.name}
-                                            </Link>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span className={`text-sm font-black ${day.is_today ? 'text-[#43b6a8]' : 'text-slate-700'}`}>{day.label}</span>
+                                                    <span className="text-[0.7rem] font-semibold uppercase text-slate-300">Add</span>
+                                                </div>
 
-                        <div className="mt-5 grid grid-cols-7 gap-2 text-center">
-                            {calendar.weekday_labels.map((label) => (
-                                <div key={label} className="px-1 py-2 text-xs font-extrabold tracking-[0.18em] text-slate-400 uppercase">
-                                    {label}
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="mt-2 space-y-2">
-                            {calendar.weeks.map((week, weekIndex) => (
-                                <div key={`${calendar.month}-${weekIndex}`} className="grid grid-cols-7 gap-2">
-                                    {week.map((day) => (
-                                        <button
-                                            key={day.date}
-                                            type="button"
-                                            onClick={() => selectDay(day.date)}
-                                            className={`min-h-36 rounded-[1.35rem] border p-3 text-left transition md:min-h-40 ${
-                                                day.is_current_month
-                                                    ? 'border-slate-200 bg-slate-50/60 hover:border-teal-200 hover:bg-white'
-                                                    : 'border-slate-100 bg-slate-50/30 text-slate-400'
-                                            } ${day.is_today ? 'ring-2 ring-teal-200 ring-offset-2 ring-offset-white' : ''}`}
-                                        >
-                                            <div className="flex items-center justify-between gap-2">
-                                                <span
-                                                    className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-extrabold ${
-                                                        day.is_today ? 'bg-slate-950 text-white' : 'text-slate-700'
-                                                    }`}
-                                                >
-                                                    {day.label}
-                                                </span>
-                                                <span className="text-[0.7rem] font-semibold text-slate-400 uppercase">Add</span>
-                                            </div>
-
-                                            <div className="mt-3 space-y-2">
-                                                {day.occurrences.slice(0, 3).map((occurrence) => (
-                                                    <div
-                                                        key={occurrence.occurrence_key}
-                                                        className="rounded-[1rem] border px-2.5 py-2 shadow-sm"
-                                                        style={{
-                                                            backgroundColor: applyAlpha(occurrence.color, '14'),
-                                                            borderColor: applyAlpha(occurrence.color, '30'),
-                                                        }}
-                                                    >
-                                                        <div className="flex items-start gap-2">
-                                                            <span
-                                                                className="mt-1 h-2.5 w-2.5 rounded-full"
-                                                                style={{ backgroundColor: occurrence.color }}
-                                                            />
-                                                            <div className="min-w-0 flex-1">
-                                                                <p className="truncate text-xs font-extrabold text-slate-900">{occurrence.title}</p>
-                                                                <p className="mt-1 truncate text-[0.7rem] font-medium text-slate-600">
-                                                                    {occurrence.display_time}
-                                                                </p>
-                                                                {occurrence.children.length > 0 && (
-                                                                    <p className="mt-1 truncate text-[0.7rem] text-slate-500">
-                                                                        {occurrence.children.map((child) => child.name).join(', ')}
-                                                                    </p>
-                                                                )}
-                                                            </div>
+                                                <div className="mt-3 space-y-2">
+                                                    {day.occurrences.slice(0, 2).map((occurrence) => (
+                                                        <div
+                                                            key={occurrence.occurrence_key}
+                                                            className="rounded-[1rem] border px-2.5 py-2"
+                                                            style={{
+                                                                backgroundColor: applyAlpha(occurrence.color, '14'),
+                                                                borderColor: applyAlpha(occurrence.color, '30'),
+                                                            }}
+                                                        >
+                                                            <p className="truncate text-xs font-black text-slate-900">{occurrence.title}</p>
+                                                            <p className="mt-1 truncate text-[0.7rem] font-medium text-slate-500">
+                                                                {occurrence.display_time}
+                                                            </p>
                                                         </div>
-                                                    </div>
-                                                ))}
-
-                                                {day.occurrences.length > 3 && (
-                                                    <div className="px-1 text-xs font-semibold text-slate-500">
-                                                        +{day.occurrences.length - 3} more
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
-                            ))}
-                        </div>
-                    </section>
-
-                    <aside className="space-y-6">
-                        <section className="rounded-[1.75rem] border border-slate-200/80 bg-white p-5 shadow-[0_24px_80px_-50px_rgba(27,53,87,0.55)] md:p-6">
-                            <div className="flex items-start justify-between gap-4">
-                                <div>
-                                    <p className="text-xs font-extrabold tracking-[0.2em] text-slate-500 uppercase">New event</p>
-                                    <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Add to calendar</h2>
-                                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                                        Start with manual events and recurrence. Custody templates will build on top of this exact foundation.
-                                    </p>
-                                </div>
-                                <div className="rounded-full bg-teal-50 p-3 text-teal-700">
-                                    <CalendarDays className="size-5" />
-                                </div>
+                                                    ))}
+                                                    {day.occurrences.length > 2 && (
+                                                        <p className="text-[0.7rem] font-semibold text-slate-400">+{day.occurrences.length - 2} more</p>
+                                                    )}
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                ))}
                             </div>
+                        </SectionCard>
 
-                            <form className="mt-6 space-y-5" onSubmit={submit}>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="title">Title</Label>
-                                    <Input
-                                        id="title"
-                                        value={data.title}
-                                        onChange={(event) => setData('title', event.target.value)}
-                                        placeholder="Soccer practice"
-                                        disabled={processing}
-                                    />
-                                    <InputError message={errors.title} />
-                                </div>
-
-                                <div className="grid gap-2">
-                                    <Label htmlFor="description">Description</Label>
-                                    <textarea
-                                        id="description"
-                                        value={data.description}
-                                        onChange={(event) => setData('description', event.target.value)}
-                                        placeholder="Pickup is by the south gate."
-                                        disabled={processing}
-                                        className="min-h-24 rounded-[1rem] border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-teal-300 focus:bg-white focus:ring-2 focus:ring-teal-100"
-                                    />
-                                    <InputError message={errors.description} />
-                                </div>
-
-                                <div className="grid gap-4 sm:grid-cols-2">
+                        <SectionCard
+                            id="quick-add-event"
+                            title="Quick Add Event"
+                            icon={Repeat}
+                            description="Keep the schedule moving without leaving the dashboard. This still writes to the real recurring calendar backend."
+                        >
+                            <form className="space-y-5" onSubmit={submit}>
+                                <div className="grid gap-5 md:grid-cols-2">
                                     <div className="grid gap-2">
-                                        <Label htmlFor="starts_at">Starts</Label>
+                                        <label htmlFor="title" className="text-base font-bold text-slate-400">
+                                            Title
+                                        </label>
+                                        <Input
+                                            id="title"
+                                            value={data.title}
+                                            onChange={(event) => setData('title', event.target.value)}
+                                            placeholder="Soccer practice"
+                                            disabled={processing}
+                                            className="h-14 rounded-[1.2rem] border-[#cfe9e4] bg-white text-[1.05rem]"
+                                        />
+                                        <InputError message={errors.title} />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <label htmlFor="location" className="text-base font-bold text-slate-400">
+                                            Location
+                                        </label>
+                                        <Input
+                                            id="location"
+                                            value={data.location}
+                                            onChange={(event) => setData('location', event.target.value)}
+                                            placeholder="Community field"
+                                            disabled={processing}
+                                            className="h-14 rounded-[1.2rem] border-[#cfe9e4] bg-white text-[1.05rem]"
+                                        />
+                                        <InputError message={errors.location} />
+                                    </div>
+                                </div>
+
+                                <div className="grid gap-5 md:grid-cols-2">
+                                    <div className="grid gap-2">
+                                        <label htmlFor="starts_at" className="text-base font-bold text-slate-400">
+                                            Starts
+                                        </label>
                                         <Input
                                             id="starts_at"
                                             type="datetime-local"
                                             value={data.starts_at}
                                             onChange={(event) => setData('starts_at', event.target.value)}
                                             disabled={processing}
+                                            className="h-14 rounded-[1.2rem] border-[#cfe9e4] bg-white text-[1.05rem]"
                                         />
                                         <InputError message={errors.starts_at} />
                                     </div>
-
                                     <div className="grid gap-2">
-                                        <Label htmlFor="ends_at">Ends</Label>
+                                        <label htmlFor="ends_at" className="text-base font-bold text-slate-400">
+                                            Ends
+                                        </label>
                                         <Input
                                             id="ends_at"
                                             type="datetime-local"
                                             value={data.ends_at}
                                             onChange={(event) => setData('ends_at', event.target.value)}
                                             disabled={processing}
+                                            className="h-14 rounded-[1.2rem] border-[#cfe9e4] bg-white text-[1.05rem]"
                                         />
                                         <InputError message={errors.ends_at} />
                                     </div>
                                 </div>
 
-                                <div className="grid gap-4 sm:grid-cols-2">
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="location">Location</Label>
-                                        <Input
-                                            id="location"
-                                            value={data.location}
-                                            onChange={(event) => setData('location', event.target.value)}
-                                            placeholder="Lincoln Elementary"
-                                            disabled={processing}
-                                        />
-                                        <InputError message={errors.location} />
-                                    </div>
-
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="timezone">Timezone</Label>
-                                        <Input
-                                            id="timezone"
-                                            value={data.timezone}
-                                            onChange={(event) => setData('timezone', event.target.value)}
-                                            disabled={processing}
-                                        />
-                                        <InputError message={errors.timezone} />
-                                    </div>
+                                <div className="grid gap-2">
+                                    <label htmlFor="description" className="text-base font-bold text-slate-400">
+                                        Notes
+                                    </label>
+                                    <textarea
+                                        id="description"
+                                        value={data.description}
+                                        onChange={(event) => setData('description', event.target.value)}
+                                        disabled={processing}
+                                        placeholder="Pickup is by the south gate."
+                                        className="min-h-28 rounded-[1.2rem] border border-[#cfe9e4] bg-white px-4 py-4 text-[1.05rem] text-slate-900 outline-none focus:border-[#8fd6ca]"
+                                    />
+                                    <InputError message={errors.description} />
                                 </div>
 
-                                <label className="flex items-center gap-3 rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
-                                    <input
-                                        type="checkbox"
-                                        checked={data.is_all_day}
-                                        onChange={(event) => setData('is_all_day', event.target.checked)}
-                                        disabled={processing}
-                                        className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-200"
-                                    />
-                                    Mark as all-day event
-                                </label>
-                                <InputError message={errors.is_all_day} />
-
                                 <div className="grid gap-2">
-                                    <Label>Children</Label>
+                                    <p className="text-base font-bold text-slate-400">Children</p>
                                     <div className="flex flex-wrap gap-2">
                                         {workspace.children.map((child) => {
                                             const isSelected = data.child_ids.includes(child.id);
@@ -526,10 +854,10 @@ export default function Dashboard({ workspace, workspaces, calendar }: Dashboard
                                                     type="button"
                                                     onClick={() => toggleChild(child.id)}
                                                     disabled={processing}
-                                                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold transition ${
+                                                    className={`inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-base font-black transition ${
                                                         isSelected
-                                                            ? 'border-slate-900 bg-slate-950 text-white'
-                                                            : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-teal-200 hover:text-teal-800'
+                                                            ? 'border-[#172033] bg-[#172033] text-white'
+                                                            : 'border-[#dceceb] bg-white text-slate-700'
                                                     }`}
                                                 >
                                                     <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: child.color }} />
@@ -538,11 +866,88 @@ export default function Dashboard({ workspace, workspaces, calendar }: Dashboard
                                             );
                                         })}
                                     </div>
-                                    <InputError message={errors.child_ids} />
                                 </div>
 
+                                <div className="grid gap-5 md:grid-cols-[1fr_auto_auto]">
+                                    <div className="grid gap-2">
+                                        <label htmlFor="recurrence_type" className="text-base font-bold text-slate-400">
+                                            Repeat pattern
+                                        </label>
+                                        <select
+                                            id="recurrence_type"
+                                            value={data.recurrence_type}
+                                            onChange={(event) =>
+                                                handleRecurrenceTypeChange(event.target.value as CalendarEventForm['recurrence_type'])
+                                            }
+                                            disabled={processing}
+                                            className="h-14 rounded-[1.2rem] border border-[#cfe9e4] bg-white px-4 text-[1.05rem] text-slate-900 outline-none"
+                                        >
+                                            {recurrenceOptions.map((option) => (
+                                                <option key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <label htmlFor="recurrence_interval" className="text-base font-bold text-slate-400">
+                                            Interval
+                                        </label>
+                                        <Input
+                                            id="recurrence_interval"
+                                            type="number"
+                                            min={1}
+                                            max={12}
+                                            value={data.recurrence_interval}
+                                            onChange={(event) => setData('recurrence_interval', Number(event.target.value) || 1)}
+                                            disabled={processing}
+                                            className="h-14 w-28 rounded-[1.2rem] border-[#cfe9e4] bg-white text-[1.05rem]"
+                                        />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <label htmlFor="recurrence_until" className="text-base font-bold text-slate-400">
+                                            Repeat until
+                                        </label>
+                                        <Input
+                                            id="recurrence_until"
+                                            type="date"
+                                            value={data.recurrence_until}
+                                            onChange={(event) => setData('recurrence_until', event.target.value)}
+                                            disabled={processing}
+                                            className="h-14 rounded-[1.2rem] border-[#cfe9e4] bg-white text-[1.05rem]"
+                                        />
+                                    </div>
+                                </div>
+
+                                {data.recurrence_type === 'weekly' && (
+                                    <div className="grid gap-2">
+                                        <p className="text-base font-bold text-slate-400">Days of week</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {weekdayOptions.map((day) => {
+                                                const isActive = data.recurrence_days_of_week.includes(day.value);
+
+                                                return (
+                                                    <button
+                                                        key={day.value}
+                                                        type="button"
+                                                        onClick={() => toggleWeekday(day.value)}
+                                                        disabled={processing}
+                                                        className={`rounded-full px-4 py-2.5 text-sm font-black transition ${
+                                                            isActive
+                                                                ? 'bg-[#172033] text-white'
+                                                                : 'border border-[#dceceb] bg-white text-slate-700'
+                                                        }`}
+                                                    >
+                                                        {day.label}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="grid gap-2">
-                                    <Label>Event color</Label>
+                                    <p className="text-base font-bold text-slate-400">Color</p>
                                     <div className="flex flex-wrap gap-3">
                                         {childColors.map((color) => {
                                             const isActive = data.color === color;
@@ -552,168 +957,36 @@ export default function Dashboard({ workspace, workspaces, calendar }: Dashboard
                                                     key={color}
                                                     type="button"
                                                     onClick={() => setData('color', color)}
-                                                    className={`h-9 w-9 rounded-full border-4 transition ${isActive ? 'scale-105 border-slate-950' : 'border-white shadow-sm hover:border-slate-200'}`}
+                                                    className={`h-10 w-10 rounded-full border-4 transition ${
+                                                        isActive ? 'scale-105 border-[#172033]' : 'border-white shadow-sm'
+                                                    }`}
                                                     style={{ backgroundColor: color }}
                                                     aria-label={`Use ${color} as event color`}
                                                 />
                                             );
                                         })}
                                     </div>
-                                    <InputError message={errors.color} />
                                 </div>
 
-                                <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50/80 p-4">
-                                    <div className="flex items-center gap-2">
-                                        <Repeat className="size-4 text-teal-700" />
-                                        <p className="text-sm font-extrabold text-slate-900">Recurrence</p>
-                                    </div>
-
-                                    <div className="mt-4 grid gap-4">
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="recurrence_type">Repeat pattern</Label>
-                                            <select
-                                                id="recurrence_type"
-                                                value={data.recurrence_type}
-                                                onChange={(event) =>
-                                                    handleRecurrenceTypeChange(event.target.value as CalendarEventForm['recurrence_type'])
-                                                }
-                                                disabled={processing}
-                                                className="h-11 rounded-[1rem] border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-teal-300 focus:ring-2 focus:ring-teal-100"
-                                            >
-                                                {recurrenceOptions.map((option) => (
-                                                    <option key={option.value} value={option.value}>
-                                                        {option.label}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            <InputError message={errors.recurrence_type} />
-                                        </div>
-
-                                        {data.recurrence_type !== 'none' && (
-                                            <>
-                                                <div className="grid gap-4 sm:grid-cols-2">
-                                                    <div className="grid gap-2">
-                                                        <Label htmlFor="recurrence_interval">Interval</Label>
-                                                        <Input
-                                                            id="recurrence_interval"
-                                                            type="number"
-                                                            min={1}
-                                                            max={12}
-                                                            value={data.recurrence_interval}
-                                                            onChange={(event) => setData('recurrence_interval', Number(event.target.value) || 1)}
-                                                            disabled={processing}
-                                                        />
-                                                        <InputError message={errors.recurrence_interval} />
-                                                    </div>
-
-                                                    <div className="grid gap-2">
-                                                        <Label htmlFor="recurrence_until">Repeat until</Label>
-                                                        <Input
-                                                            id="recurrence_until"
-                                                            type="date"
-                                                            value={data.recurrence_until}
-                                                            onChange={(event) => setData('recurrence_until', event.target.value)}
-                                                            disabled={processing}
-                                                        />
-                                                        <InputError message={errors.recurrence_until} />
-                                                    </div>
-                                                </div>
-
-                                                {data.recurrence_type === 'weekly' && (
-                                                    <div className="grid gap-2">
-                                                        <Label>Days of week</Label>
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {weekdayOptions.map((day) => {
-                                                                const isActive = data.recurrence_days_of_week.includes(day.value);
-
-                                                                return (
-                                                                    <button
-                                                                        key={day.value}
-                                                                        type="button"
-                                                                        onClick={() => toggleWeekday(day.value)}
-                                                                        disabled={processing}
-                                                                        className={`rounded-full px-3 py-2 text-sm font-semibold transition ${
-                                                                            isActive
-                                                                                ? 'bg-slate-950 text-white'
-                                                                                : 'border border-slate-200 bg-white text-slate-700 hover:border-teal-200 hover:text-teal-800'
-                                                                        }`}
-                                                                    >
-                                                                        {day.label}
-                                                                    </button>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                        <InputError message={errors.recurrence_days_of_week} />
-                                                    </div>
-                                                )}
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <Button type="submit" size="lg" className="w-full rounded-full" disabled={processing}>
+                                <Button type="submit" className="h-14 rounded-[1.2rem] bg-[#67d2c3] text-[1.05rem] font-black text-white" disabled={processing}>
                                     {processing && <LoaderCircle className="animate-spin" />}
-                                    Save event
+                                    Save Event
                                 </Button>
                             </form>
-                        </section>
+                        </SectionCard>
 
-                        <section className="rounded-[1.75rem] border border-slate-200/80 bg-white p-5 shadow-[0_24px_80px_-50px_rgba(27,53,87,0.55)] md:p-6">
-                            <div className="flex items-start justify-between gap-4">
-                                <div>
-                                    <p className="text-xs font-extrabold tracking-[0.2em] text-slate-500 uppercase">Upcoming</p>
-                                    <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">What&apos;s next</h2>
-                                </div>
-                                <div className="rounded-full bg-slate-100 p-3 text-slate-700">
-                                    <Users className="size-5" />
-                                </div>
-                            </div>
-
-                            <div className="mt-5 space-y-3">
-                                {calendar.upcoming.length > 0 ? (
-                                    calendar.upcoming.map((occurrence) => (
-                                        <article key={occurrence.occurrence_key} className="rounded-[1.25rem] border border-slate-200 bg-slate-50/70 p-4">
-                                            <div className="flex items-start gap-3">
-                                                <span className="mt-1 h-3 w-3 rounded-full" style={{ backgroundColor: occurrence.color }} />
-                                                <div className="min-w-0 flex-1">
-                                                    <p className="text-sm font-extrabold text-slate-950">{occurrence.title}</p>
-                                                    <p className="mt-1 text-sm text-slate-600">
-                                                        {new Date(occurrence.starts_at).toLocaleDateString(undefined, {
-                                                            month: 'short',
-                                                            day: 'numeric',
-                                                        })}{' '}
-                                                        - {occurrence.display_time}
-                                                    </p>
-                                                    {occurrence.children.length > 0 && (
-                                                        <div className="mt-2 flex flex-wrap gap-2">
-                                                            {occurrence.children.map((child) => (
-                                                                <span
-                                                                    key={`${occurrence.occurrence_key}-${child.id}`}
-                                                                    className="inline-flex items-center gap-2 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-600"
-                                                                >
-                                                                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: child.color }} />
-                                                                    {child.name}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                    {occurrence.recurrence_label && (
-                                                        <p className="mt-2 text-xs font-semibold text-teal-700">{occurrence.recurrence_label}</p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </article>
-                                    ))
+                        <SectionCard id="recent-activity" title="Recent Activity" icon={ClipboardList}>
+                            <div className="max-h-[27rem] overflow-y-auto rounded-[1.4rem] border border-[#edf3f2]">
+                                {recentActivity.length > 0 ? (
+                                    recentActivity.map((item) => <ActivityRow key={item.id} item={item} />)
                                 ) : (
-                                    <div className="rounded-[1.25rem] border border-dashed border-slate-200 bg-slate-50/70 p-5 text-sm leading-6 text-slate-600">
-                                        No upcoming items yet. Add the first school, custody, or activity event from the form above.
-                                    </div>
+                                    <div className="px-5 py-10 text-center text-lg text-slate-400">No recent activity yet.</div>
                                 )}
                             </div>
-                        </section>
-                    </aside>
-                </div>
+                        </SectionCard>
+                    </div>
+                </main>
             </div>
-        </AppLayout>
+        </>
     );
 }
