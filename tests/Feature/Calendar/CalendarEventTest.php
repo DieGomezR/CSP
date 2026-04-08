@@ -47,7 +47,7 @@ test('workspace members can create family calendar events with child assignments
         'recurrence_days_of_week' => [],
     ]);
 
-    $response->assertRedirect(route('dashboard', [
+    $response->assertRedirect(route('calendar', [
         'workspace' => $workspace->id,
         'month' => '2026-04',
     ], absolute: false));
@@ -65,7 +65,7 @@ test('workspace members can create family calendar events with child assignments
     ]);
 });
 
-test('dashboard expands recurring weekly events for the visible month', function () {
+test('calendar page expands recurring weekly events for the visible month', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([
         'owner_id' => $user->id,
@@ -94,13 +94,13 @@ test('dashboard expands recurring weekly events for the visible month', function
     $event->children()->sync([$child->id]);
 
     $this->actingAs($user)
-        ->get(route('dashboard', [
+        ->get(route('calendar', [
             'workspace' => $workspace->id,
             'month' => '2026-04',
         ]))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('dashboard')
+            ->component('calendar')
             ->where('calendar.summary.series_count', 1)
             ->where('calendar.summary.occurrences_count', 8)
             ->where('calendar.upcoming.0.title', 'Alternating handoff'));

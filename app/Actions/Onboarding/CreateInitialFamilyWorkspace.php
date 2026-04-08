@@ -30,6 +30,17 @@ class CreateInitialFamilyWorkspace
                     'onboarding_version' => 1,
                     'onboarding_completed_at' => now()->toIso8601String(),
                     'household_name' => $payload['family_name'],
+                    'custody_schedule' => [
+                        'completed_at' => null,
+                        'children_ids' => [],
+                        'starting_parent_member_id' => null,
+                        'start_date' => null,
+                        'generate_until' => '1 year',
+                        'end_date' => null,
+                        'exchange_day' => 'Sunday',
+                        'exchange_time' => '18:00',
+                        'school_calendar' => null,
+                    ],
                 ],
             ]);
 

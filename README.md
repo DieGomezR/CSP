@@ -4,6 +4,7 @@ KidSchedule is the challenge project for rebuilding the product behind [kidsched
 
 The current foundation uses:
 
+- PHP 8.3+
 - Laravel 12
 - Inertia + React + TypeScript
 - Pest
@@ -46,11 +47,32 @@ To run locally:
 ```bash
 composer install
 npm install
-cp .env.example .env
+copy .env.example .env
 php artisan key:generate
+docker-compose up -d db
 php artisan migrate
-composer run dev
+php artisan serve
+npm run dev
 ```
+
+Local development now uses:
+
+- `http://127.0.0.1:8000` for Laravel via `php artisan serve`
+- `127.0.0.1:54329` for PostgreSQL
+
+Useful Docker commands:
+
+```bash
+docker-compose up -d db
+docker-compose down
+```
+
+Important local note:
+
+- the project now targets `PHP 8.3+`
+- Docker is only being used for PostgreSQL in local development
+- Laravel and Vite should run directly on the host with `php artisan serve` and `npm run dev`
+- if port `8000` is busy, make sure old Docker app containers or old `php artisan serve` processes are stopped first
 
 If you prefer SQLite during local development, update `.env` accordingly before running migrations.
 

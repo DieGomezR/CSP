@@ -29,5 +29,5 @@ test('authenticated users with a workspace can visit the dashboard', function ()
         ->assertInertia(fn (Assert $page) => $page
             ->component('dashboard')
             ->has('workspace')
-            ->has('calendar.summary'));
+            ->has('recentActivity'));
 });

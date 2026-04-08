@@ -10,13 +10,15 @@ import {
     Shield,
     Users,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const navigationItems = [
     { label: 'Features', href: '#features' },
     { label: 'Pricing', href: '#pricing' },
     { label: 'Blog', href: '#blog' },
-    { label: 'For PTAs', href: '#pta' },
+    { label: 'Teams', href: route('for-teams'), external: true },
+    { label: 'Co-Parents', href: route('for-coparents'), external: true },
+    { label: 'For PTAs', href: route('pta'), external: true },
 ];
 
 const heroBullets = ['45,000+ school calendars', 'Syncs to any calendar app', 'Share with caregivers'];
@@ -35,6 +37,7 @@ const familySegments = [
         body: 'Custody schedules, documented messaging, expense tracking, and court-ready exports when they are needed.',
         accent: 'text-[#3556d4]',
         background: 'bg-[#dfebff]',
+        href: route('for-coparents'),
     },
     {
         icon: CalendarDays,
@@ -42,6 +45,7 @@ const familySegments = [
         body: 'One calendar for the whole team. Parents subscribe once and practices, games, and changes stay synced.',
         accent: 'text-[#d96b1c]',
         background: 'bg-[#fff1dc]',
+        href: route('for-teams'),
     },
     {
         icon: GraduationCap,
@@ -49,6 +53,7 @@ const familySegments = [
         body: 'Member directory, event management, volunteer signups, and announcements without the spreadsheet chaos.',
         accent: 'text-[#7a49d9]',
         background: 'bg-[#efe2ff]',
+        href: route('pta'),
     },
 ];
 
@@ -209,11 +214,17 @@ function NavBar({ authUser }: { authUser: SharedData['auth']['user'] | undefined
                 </a>
 
                 <nav className="hidden items-center gap-10 text-sm font-extrabold text-slate-600 md:flex">
-                    {navigationItems.map((item) => (
-                        <a key={item.label} href={item.href} className="transition hover:text-slate-950">
-                            {item.label}
-                        </a>
-                    ))}
+                    {navigationItems.map((item) =>
+                        'external' in item && item.external ? (
+                            <Link key={item.label} href={item.href} className="transition hover:text-slate-950">
+                                {item.label}
+                            </Link>
+                        ) : (
+                            <a key={item.label} href={item.href} className="transition hover:text-slate-950">
+                                {item.label}
+                            </a>
+                        ),
+                    )}
                 </nav>
 
                 <div className="flex items-center gap-3">
@@ -238,6 +249,60 @@ function NavBar({ authUser }: { authUser: SharedData['auth']['user'] | undefined
     );
 }
 
+function ScrollReveal({
+    children,
+    delay = 0,
+    variant = 'up',
+    className = '',
+}: {
+    children: React.ReactNode;
+    delay?: number;
+    variant?: 'up' | 'left' | 'right';
+    className?: string;
+}) {
+    const ref = useRef<HTMLDivElement | null>(null);
+    const [isVisible, setIsVisible] = useState(false);
+
+    useEffect(() => {
+        const node = ref.current;
+
+        if (!node) {
+            return;
+        }
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        setIsVisible(true);
+                        observer.unobserve(entry.target);
+                    }
+                });
+            },
+            {
+                threshold: 0.16,
+                rootMargin: '0px 0px -10% 0px',
+            },
+        );
+
+        observer.observe(node);
+
+        return () => observer.disconnect();
+    }, []);
+
+    return (
+        <div
+            ref={ref}
+            className={`scroll-reveal ${className}`.trim()}
+            data-reveal={isVisible ? 'visible' : 'hidden'}
+            data-reveal-variant={variant}
+            style={{ ['--reveal-delay' as string]: `${delay}ms` }}
+        >
+            {children}
+        </div>
+    );
+}
+
 export default function Welcome() {
     const { auth } = usePage<SharedData>().props;
     const [billingMode, setBillingMode] = useState<'parent' | 'family'>('parent');
@@ -254,103 +319,123 @@ export default function Welcome() {
                 <main>
                     <section className="bg-[linear-gradient(135deg,#eefbf6_0%,#edf8f4_50%,#edf5ff_100%)]">
                         <div className="mx-auto max-w-6xl px-6 pt-18 pb-22 text-center">
-                            <h1 className="mx-auto max-w-4xl text-5xl leading-[1.08] font-black tracking-tight text-slate-900 md:text-7xl">
-                                The family calendar that actually works.
-                            </h1>
-                            <p className="mx-auto mt-7 max-w-3xl text-xl leading-9 text-slate-600">
-                                School schedules, activities, and everyone&apos;s stuff - finally in one place. Syncs everywhere. Works for any
-                                family.
-                            </p>
+                            <ScrollReveal>
+                                <h1 className="mx-auto max-w-4xl text-5xl leading-[1.08] font-black tracking-tight text-slate-900 md:text-7xl">
+                                    The family calendar that actually works.
+                                </h1>
+                            </ScrollReveal>
+                            <ScrollReveal delay={100}>
+                                <p className="mx-auto mt-7 max-w-3xl text-xl leading-9 text-slate-600">
+                                    School schedules, activities, and everyone&apos;s stuff - finally in one place. Syncs everywhere. Works for any
+                                    family.
+                                </p>
+                            </ScrollReveal>
 
-                            <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-                                <a
-                                    href={primaryHref}
-                                    className="rounded-full bg-[linear-gradient(90deg,#67d2c3_0%,#58c9b7_100%)] px-7 py-4 text-base font-black text-white shadow-[0_18px_40px_-20px_rgba(77,191,174,0.8)] transition hover:translate-y-[-1px]"
-                                >
-                                    Start Free for 60 Days
-                                </a>
-                                <a
-                                    href="#features"
-                                    className="rounded-full border border-white/80 bg-white/70 px-7 py-4 text-base font-black text-slate-700 shadow-sm transition hover:text-slate-950"
-                                >
-                                    See How It Works
-                                </a>
-                            </div>
+                            <ScrollReveal delay={180}>
+                                <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+                                    <a
+                                        href={primaryHref}
+                                        className="rounded-full bg-[linear-gradient(90deg,#67d2c3_0%,#58c9b7_100%)] px-7 py-4 text-base font-black text-white shadow-[0_18px_40px_-20px_rgba(77,191,174,0.8)] transition hover:translate-y-[-1px]"
+                                    >
+                                        Start Free for 60 Days
+                                    </a>
+                                    <a
+                                        href="#features"
+                                        className="rounded-full border border-white/80 bg-white/70 px-7 py-4 text-base font-black text-slate-700 shadow-sm transition hover:text-slate-950"
+                                    >
+                                        See How It Works
+                                    </a>
+                                </div>
+                            </ScrollReveal>
 
                             <div className="mt-12 flex flex-wrap items-center justify-center gap-8 text-sm font-bold text-slate-500">
-                                {heroBullets.map((item) => (
-                                    <div key={item} className="flex items-center gap-2">
+                                {heroBullets.map((item, index) => (
+                                    <ScrollReveal key={item} delay={240 + index * 80}>
+                                        <div className="flex items-center gap-2">
                                         <Check className="size-4 text-[#59c8b7]" />
                                         {item}
-                                    </div>
+                                        </div>
+                                    </ScrollReveal>
                                 ))}
                             </div>
                         </div>
                     </section>
 
                     <section className="mx-auto max-w-6xl px-6 py-18">
-                        <div className="text-center">
+                        <ScrollReveal className="text-center">
                             <h2 className="text-4xl font-black tracking-tight text-slate-900">Built for how families really work</h2>
                             <p className="mx-auto mt-4 max-w-3xl text-xl text-slate-500">
                                 Whether you&apos;re coordinating with a spouse, a co-parent, a coach, or grandma.
                             </p>
-                        </div>
+                        </ScrollReveal>
 
-                        <div className="mt-12 grid gap-5 md:grid-cols-2">
-                            {familySegments.map((item) => (
-                                <article
-                                    key={item.title}
-                                    className={`rounded-[1.8rem] p-8 shadow-[0_22px_45px_-38px_rgba(15,23,42,0.45)] ${item.background}`}
-                                >
-                                    <item.icon className={`size-9 ${item.accent}`} />
-                                    <h3 className={`mt-7 text-3xl font-black tracking-tight ${item.accent}`}>{item.title}</h3>
-                                    <p className={`mt-4 max-w-md text-lg leading-8 ${item.accent} opacity-85`}>{item.body}</p>
-                                    <p className={`mt-7 text-base font-black ${item.accent}`}>Learn more</p>
-                                </article>
+                        <div className="mt-12 grid auto-rows-fr gap-5 md:grid-cols-2">
+                            {familySegments.map((item, index) => (
+                                <ScrollReveal key={item.title} delay={index * 90} variant={index % 2 === 0 ? 'left' : 'right'}>
+                                    {'href' in item && item.href ? (
+                                        <Link
+                                            href={item.href}
+                                            className={`flex h-full min-h-[300px] flex-col rounded-[1.8rem] p-8 shadow-[0_22px_45px_-38px_rgba(15,23,42,0.45)] transition hover:-translate-y-1 ${item.background}`}
+                                        >
+                                            <item.icon className={`size-9 ${item.accent}`} />
+                                            <h3 className={`mt-7 text-3xl font-black tracking-tight ${item.accent}`}>{item.title}</h3>
+                                            <p className={`mt-4 max-w-md flex-1 text-lg leading-8 ${item.accent} opacity-85`}>{item.body}</p>
+                                            <p className={`mt-7 text-base font-black ${item.accent}`}>Learn more</p>
+                                        </Link>
+                                    ) : (
+                                        <article className={`flex h-full min-h-[300px] flex-col rounded-[1.8rem] p-8 shadow-[0_22px_45px_-38px_rgba(15,23,42,0.45)] ${item.background}`}>
+                                            <item.icon className={`size-9 ${item.accent}`} />
+                                            <h3 className={`mt-7 text-3xl font-black tracking-tight ${item.accent}`}>{item.title}</h3>
+                                            <p className={`mt-4 max-w-md flex-1 text-lg leading-8 ${item.accent} opacity-85`}>{item.body}</p>
+                                            <p className={`mt-7 text-base font-black ${item.accent}`}>Learn more</p>
+                                        </article>
+                                    )}
+                                </ScrollReveal>
                             ))}
                         </div>
                     </section>
 
                     <section id="features" className="bg-slate-50/75 py-18">
                         <div className="mx-auto max-w-6xl px-6">
-                            <div className="text-center">
+                            <ScrollReveal className="text-center">
                                 <h2 className="text-4xl font-black tracking-tight text-slate-900">Features that save you time</h2>
                                 <p className="mx-auto mt-4 max-w-3xl text-xl text-slate-500">
                                     No more juggling apps, spreadsheets, and group texts.
                                 </p>
-                            </div>
+                            </ScrollReveal>
 
                             <div className="mt-12 grid gap-5 lg:grid-cols-3">
-                                {featureCards.map((feature) => (
-                                    <article
-                                        className="rounded-[1.7rem] border border-slate-100 bg-white p-7 shadow-[0_24px_60px_-45px_rgba(15,23,42,0.35)]"
-                                        key={feature.title}
-                                    >
-                                        <feature.icon className="size-8 text-[#a38fc9]" />
-                                        <h3 className="mt-6 text-2xl font-black tracking-tight text-slate-900">{feature.title}</h3>
-                                        <p className="mt-4 text-lg leading-8 text-slate-500">{feature.body}</p>
-                                    </article>
+                                {featureCards.map((feature, index) => (
+                                    <ScrollReveal key={feature.title} delay={index * 70}>
+                                        <article className="rounded-[1.7rem] border border-slate-100 bg-white p-7 shadow-[0_24px_60px_-45px_rgba(15,23,42,0.35)]">
+                                            <feature.icon className="size-8 text-[#a38fc9]" />
+                                            <h3 className="mt-6 text-2xl font-black tracking-tight text-slate-900">{feature.title}</h3>
+                                            <p className="mt-4 text-lg leading-8 text-slate-500">{feature.body}</p>
+                                        </article>
+                                    </ScrollReveal>
                                 ))}
                             </div>
                         </div>
                     </section>
 
                     <section className="mx-auto max-w-6xl px-6 py-18">
-                        <div className="mx-auto max-w-3xl rounded-[1.8rem] border-l-4 border-[#67d2c3] bg-slate-50 px-10 py-10 text-center shadow-[0_20px_55px_-45px_rgba(15,23,42,0.4)]">
+                        <ScrollReveal className="mx-auto max-w-3xl rounded-[1.8rem] border-l-4 border-[#67d2c3] bg-slate-50 px-10 py-10 text-center shadow-[0_20px_55px_-45px_rgba(15,23,42,0.4)]">
                             <p className="text-[2rem] leading-[1.6] italic text-slate-600">
                                 &quot;Finally, one app that handles our crazy schedule. Three kids, two sports each, plus school stuff and I can
                                 actually see it all without losing my mind.&quot;
                             </p>
                             <p className="mt-6 text-xl font-black text-[#67d2c3]">Michelle R., mom of 3</p>
-                        </div>
+                        </ScrollReveal>
                     </section>
 
                     <section id="pricing" className="bg-slate-50/80 py-18">
                         <div className="mx-auto max-w-6xl px-6 text-center">
-                            <h2 className="text-4xl font-black tracking-tight text-slate-900">Simple, affordable plans</h2>
-                            <p className="mt-4 text-xl text-slate-500">Start free for 60 days. Cancel anytime.</p>
+                            <ScrollReveal>
+                                <h2 className="text-4xl font-black tracking-tight text-slate-900">Simple, affordable plans</h2>
+                                <p className="mt-4 text-xl text-slate-500">Start free for 60 days. Cancel anytime.</p>
+                            </ScrollReveal>
 
-                            <div className="mt-8 inline-flex rounded-2xl bg-slate-100 p-1.5">
+                            <ScrollReveal delay={90} className="mt-8 inline-flex rounded-2xl bg-slate-100 p-1.5">
                                 <button
                                     type="button"
                                     onClick={() => setBillingMode('parent')}
@@ -369,47 +454,48 @@ export default function Welcome() {
                                 >
                                     Full Family
                                 </button>
-                            </div>
+                            </ScrollReveal>
 
                             <div className="mt-12 grid gap-6 xl:grid-cols-3">
-                                {plansToRender.map((plan) => (
-                                    <article
-                                        key={`${billingMode}-${plan.name}`}
-                                        className={`relative rounded-[1.8rem] border p-8 text-left shadow-[0_28px_65px_-52px_rgba(15,23,42,0.45)] ${
-                                            plan.featured ? 'border-transparent bg-[#63cfc0] text-white' : 'border-slate-200 bg-white text-slate-900'
-                                        }`}
-                                    >
-                                        {plan.badge && (
-                                            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ffb21a] px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-white">
-                                                {plan.badge}
+                                {plansToRender.map((plan, index) => (
+                                    <ScrollReveal key={`${billingMode}-${plan.name}`} delay={index * 90}>
+                                        <article
+                                            className={`relative rounded-[1.8rem] border p-8 text-left shadow-[0_28px_65px_-52px_rgba(15,23,42,0.45)] ${
+                                                plan.featured ? 'border-transparent bg-[#63cfc0] text-white' : 'border-slate-200 bg-white text-slate-900'
+                                            }`}
+                                        >
+                                            {plan.badge && (
+                                                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ffb21a] px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-white">
+                                                    {plan.badge}
+                                                </div>
+                                            )}
+
+                                            <h3 className="mt-2 text-4xl font-black tracking-tight">{plan.name}</h3>
+                                            <p className={`mt-2 text-lg ${plan.featured ? 'text-white/85' : 'text-slate-500'}`}>{plan.subtitle}</p>
+                                            <div className="mt-8 flex items-end gap-2">
+                                                <span className="text-6xl font-black tracking-tight">{plan.price}</span>
+                                                <span className={`pb-2 text-xl ${plan.featured ? 'text-white/85' : 'text-slate-500'}`}>/month</span>
                                             </div>
-                                        )}
 
-                                        <h3 className="mt-2 text-4xl font-black tracking-tight">{plan.name}</h3>
-                                        <p className={`mt-2 text-lg ${plan.featured ? 'text-white/85' : 'text-slate-500'}`}>{plan.subtitle}</p>
-                                        <div className="mt-8 flex items-end gap-2">
-                                            <span className="text-6xl font-black tracking-tight">{plan.price}</span>
-                                            <span className={`pb-2 text-xl ${plan.featured ? 'text-white/85' : 'text-slate-500'}`}>/month</span>
-                                        </div>
+                                            <ul className="mt-8 space-y-4">
+                                                {plan.features.map((feature) => (
+                                                    <li key={feature} className="flex items-start gap-3 text-lg leading-8">
+                                                        <Check className={`mt-1 size-5 shrink-0 ${plan.featured ? 'text-white' : 'text-slate-400'}`} />
+                                                        <span>{feature}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
 
-                                        <ul className="mt-8 space-y-4">
-                                            {plan.features.map((feature) => (
-                                                <li key={feature} className="flex items-start gap-3 text-lg leading-8">
-                                                    <Check className={`mt-1 size-5 shrink-0 ${plan.featured ? 'text-white' : 'text-slate-400'}`} />
-                                                    <span>{feature}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-
-                                        {plan.featured && (
-                                            <a
-                                                href={primaryHref}
-                                                className="mt-10 inline-flex w-full items-center justify-center rounded-2xl bg-white px-6 py-4 text-base font-black text-[#55bfae] transition hover:bg-slate-50"
-                                            >
-                                                Start Free Trial
-                                            </a>
-                                        )}
-                                    </article>
+                                            {plan.featured && (
+                                                <a
+                                                    href={primaryHref}
+                                                    className="mt-10 inline-flex w-full items-center justify-center rounded-2xl bg-white px-6 py-4 text-base font-black text-[#55bfae] transition hover:bg-slate-50"
+                                                >
+                                                    Start Free Trial
+                                                </a>
+                                            )}
+                                        </article>
+                                    </ScrollReveal>
                                 ))}
                             </div>
 
@@ -422,20 +508,20 @@ export default function Welcome() {
                     <section id="blog" className="mx-auto max-w-6xl px-6 py-18">
                         <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
                             <div className="space-y-5">
-                                {blogPosts.map((post) => (
-                                    <article
-                                        key={post.title}
-                                        className="rounded-[1.8rem] border border-slate-100 bg-white p-7 shadow-[0_24px_60px_-45px_rgba(15,23,42,0.35)]"
-                                    >
-                                        <p className="text-sm font-bold text-slate-400">{post.date} - KidSchedule Team</p>
-                                        <h3 className="mt-4 text-3xl font-black tracking-tight text-slate-900">{post.title}</h3>
-                                        <p className="mt-4 text-lg leading-8 text-slate-500">{post.excerpt}</p>
-                                        <p className="mt-5 text-base font-black text-slate-800">Read More</p>
-                                    </article>
+                                {blogPosts.map((post, index) => (
+                                    <ScrollReveal key={post.title} delay={index * 90} variant="left">
+                                        <article className="rounded-[1.8rem] border border-slate-100 bg-white p-7 shadow-[0_24px_60px_-45px_rgba(15,23,42,0.35)]">
+                                            <p className="text-sm font-bold text-slate-400">{post.date} - KidSchedule Team</p>
+                                            <h3 className="mt-4 text-3xl font-black tracking-tight text-slate-900">{post.title}</h3>
+                                            <p className="mt-4 text-lg leading-8 text-slate-500">{post.excerpt}</p>
+                                            <p className="mt-5 text-base font-black text-slate-800">Read More</p>
+                                        </article>
+                                    </ScrollReveal>
                                 ))}
                             </div>
 
                             <div className="space-y-5">
+                                <ScrollReveal variant="right">
                                 <div className="rounded-[1.8rem] bg-[linear-gradient(180deg,#63cfc0_0%,#5bc7b8_100%)] px-8 py-9 text-center text-white shadow-[0_28px_65px_-52px_rgba(77,191,174,0.65)]">
                                     <h3 className="text-3xl font-black tracking-tight">Ready to Simplify Co-Parenting?</h3>
                                     <p className="mt-4 text-lg leading-8 text-white/90">
@@ -448,7 +534,9 @@ export default function Welcome() {
                                         Start Free Trial
                                     </a>
                                 </div>
+                                </ScrollReveal>
 
+                                <ScrollReveal delay={100} variant="right">
                                 <div className="rounded-[1.8rem] border border-slate-100 bg-white p-7 shadow-[0_24px_60px_-45px_rgba(15,23,42,0.35)]">
                                     <h3 className="text-2xl font-black tracking-tight text-slate-900">Categories</h3>
                                     <ul className="mt-5 space-y-4 text-lg text-slate-500">
@@ -459,24 +547,26 @@ export default function Welcome() {
                                         <li>Legal Guidance</li>
                                     </ul>
                                 </div>
+                                </ScrollReveal>
                             </div>
                         </div>
                     </section>
 
                     <section id="pta" className="bg-[#1d273a] pt-20 text-white">
                         <div className="border-b border-white/5 pb-18">
-                            <div className="mx-auto max-w-5xl px-6 text-center">
+                            <ScrollReveal className="mx-auto max-w-5xl px-6 text-center">
                                 <h2 className="text-5xl font-black tracking-tight">Ready to get organized?</h2>
                                 <p className="mx-auto mt-6 max-w-3xl text-2xl leading-10 text-slate-300">
                                     Join thousands of families who finally have one place for everything.
                                 </p>
                                 <p className="mt-12 text-3xl font-black">Start Your Free 60-Day Trial</p>
                                 <p className="mt-5 text-lg text-slate-400">Setup takes 2 minutes. Cancel anytime.</p>
-                            </div>
+                            </ScrollReveal>
                         </div>
 
                         <footer className="mx-auto max-w-6xl px-6 py-16">
                             <div className="grid gap-10 lg:grid-cols-[1.1fr_1fr_1fr_1fr]">
+                                <ScrollReveal variant="left">
                                 <div>
                                     <p className="text-[2.4rem] font-black tracking-tight">KidSchedule</p>
                                     <p className="mt-6 text-lg leading-8 text-slate-400">Built for co-parents, by co-parents.</p>
@@ -492,18 +582,21 @@ export default function Welcome() {
                                         </span>
                                     </div>
                                 </div>
+                                </ScrollReveal>
 
-                                {footerColumns.map((column) => (
-                                    <div key={column.title}>
-                                        <p className="text-sm font-black uppercase tracking-[0.16em] text-white">{column.title}</p>
-                                        <ul className="mt-6 space-y-4">
-                                            {column.links.map((link) => (
-                                                <li key={link} className="text-lg text-slate-400">
-                                                    {link}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
+                                {footerColumns.map((column, index) => (
+                                    <ScrollReveal key={column.title} delay={index * 90} variant="right">
+                                        <div>
+                                            <p className="text-sm font-black uppercase tracking-[0.16em] text-white">{column.title}</p>
+                                            <ul className="mt-6 space-y-4">
+                                                {column.links.map((link) => (
+                                                    <li key={link} className="text-lg text-slate-400">
+                                                        {link}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    </ScrollReveal>
                                 ))}
                             </div>
 

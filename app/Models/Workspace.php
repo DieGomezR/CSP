@@ -56,4 +56,9 @@ class Workspace extends Model
     {
         return $this->hasMany(CalendarEvent::class);
     }
+
+    public function calendarFeeds(): HasMany
+    {
+        return $this->hasMany(CalendarFeed::class);
+    }
 }
