@@ -5,6 +5,7 @@ use App\Models\Workspace;
 use App\Models\WorkspaceInvitation;
 use App\Notifications\WorkspaceInvitationNotification;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 
 beforeEach(function () {
@@ -22,7 +23,29 @@ function makeOwnedWorkspace(): array
         'owner_id' => $owner->id,
     ]);
 
+    activateWorkspaceSubscription($owner, 'price_1TKeobGVa0O4LKuhllpTSD4i');
+
     return [$owner, $workspace];
+}
+
+function activateWorkspaceSubscription(User $user, string $priceId): void
+{
+    $user->forceFill([
+        'stripe_id' => 'cus_test_'.$user->id,
+    ])->save();
+
+    DB::table('subscriptions')->insert([
+        'user_id' => $user->id,
+        'type' => 'default',
+        'stripe_id' => 'sub_test_'.$user->id.'_'.md5($priceId),
+        'stripe_status' => 'trialing',
+        'stripe_price' => $priceId,
+        'quantity' => 1,
+        'trial_ends_at' => now()->addDays(30),
+        'ends_at' => null,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
 }
 
 test('owners can create workspace invitations and send an email', function () {

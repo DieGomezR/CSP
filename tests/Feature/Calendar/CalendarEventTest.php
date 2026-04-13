@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
@@ -18,6 +19,26 @@ afterEach(function () {
     Carbon::setTestNow();
 });
 
+function activateCalendarSubscription(User $user, string $priceId = 'price_1TKeo9GVa0O4LKuhWTs0g3FQ'): void
+{
+    $user->forceFill([
+        'stripe_id' => 'cus_test_'.$user->id,
+    ])->save();
+
+    DB::table('subscriptions')->insert([
+        'user_id' => $user->id,
+        'type' => 'default',
+        'stripe_id' => 'sub_test_'.$user->id.'_'.md5($priceId),
+        'stripe_status' => 'trialing',
+        'stripe_price' => $priceId,
+        'quantity' => 1,
+        'trial_ends_at' => now()->addDays(30),
+        'ends_at' => null,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+}
+
 test('workspace members can create family calendar events with child assignments', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([
@@ -25,6 +46,7 @@ test('workspace members can create family calendar events with child assignments
         'type' => 'family',
         'timezone' => 'America/Bogota',
     ]);
+    activateCalendarSubscription($user);
     $child = Child::factory()->create([
         'workspace_id' => $workspace->id,
         'name' => 'Emma',
@@ -72,6 +94,7 @@ test('calendar page expands recurring weekly events for the visible month', func
         'type' => 'family',
         'timezone' => 'America/Bogota',
     ]);
+    activateCalendarSubscription($user);
     $child = Child::factory()->create([
         'workspace_id' => $workspace->id,
         'name' => 'Noah',

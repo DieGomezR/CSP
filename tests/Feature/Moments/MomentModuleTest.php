@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceMember;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -26,7 +27,29 @@ function makeFamilyWorkspaceWithCoparent(): array
         'role' => 'coparent',
     ]);
 
+    activateMomentsSubscription($owner);
+
     return [$workspace, $owner, $ownerMember, $coparent, $coparentMember];
+}
+
+function activateMomentsSubscription(User $user, string $priceId = 'price_1TKeobGVa0O4LKuhllpTSD4i'): void
+{
+    $user->forceFill([
+        'stripe_id' => 'cus_test_'.$user->id,
+    ])->save();
+
+    DB::table('subscriptions')->insert([
+        'user_id' => $user->id,
+        'type' => 'default',
+        'stripe_id' => 'sub_test_'.$user->id.'_'.md5($priceId),
+        'stripe_status' => 'trialing',
+        'stripe_price' => $priceId,
+        'quantity' => 1,
+        'trial_ends_at' => now()->addDays(30),
+        'ends_at' => null,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
 }
 
 function createMomentWithImage(Workspace $workspace, WorkspaceMember $member, string $visibility, string $filename): Moment

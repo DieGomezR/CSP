@@ -30,7 +30,7 @@ test('authenticated users with a workspace can visit the dashboard', function ()
     $workspace = Workspace::factory()->create([
         'owner_id' => $user->id,
     ]);
-    activateWorkspaceSubscription($user, 'price_1TKeneGVa0O4LKuhqZWStD8q');
+    activateDashboardSubscription($user, 'price_1TKeneGVa0O4LKuhqZWStD8q');
 
     $this->actingAs($user)
         ->get(route('dashboard', ['workspace' => $workspace->id]))
@@ -53,7 +53,7 @@ test('dashboard includes saved appearance and pending invitations for owners', f
     $workspace = Workspace::factory()->create([
         'owner_id' => $user->id,
     ]);
-    activateWorkspaceSubscription($user, 'price_1TKeneGVa0O4LKuhqZWStD8q');
+    activateDashboardSubscription($user, 'price_1TKeneGVa0O4LKuhqZWStD8q');
 
     WorkspaceInvitation::create([
         'workspace_id' => $workspace->id,
@@ -88,7 +88,7 @@ test('dashboard hides owner management actions from non-owner members', function
     $workspace = Workspace::factory()->create([
         'owner_id' => $owner->id,
     ]);
-    activateWorkspaceSubscription($owner, 'price_1TKeobGVa0O4LKuhllpTSD4i');
+    activateDashboardSubscription($owner, 'price_1TKeobGVa0O4LKuhllpTSD4i');
 
     WorkspaceMember::factory()->create([
         'workspace_id' => $workspace->id,
@@ -106,7 +106,7 @@ test('dashboard hides owner management actions from non-owner members', function
         ->assertDontSee('Delete Child');
 });
 
-function activateWorkspaceSubscription(User $user, string $priceId): void
+function activateDashboardSubscription(User $user, string $priceId): void
 {
     $user->forceFill([
         'stripe_id' => 'cus_test_'.$user->id,
