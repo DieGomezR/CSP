@@ -8,6 +8,15 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $workspace_id
+ * @property int $user_id
+ * @property string $role
+ * @property string $status
+ * @property-read Workspace $workspace
+ * @property-read User $user
+ */
 class WorkspaceMember extends Model
 {
     /** @use HasFactory<WorkspaceMemberFactory> */
@@ -32,11 +41,17 @@ class WorkspaceMember extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<Workspace, self>
+     */
     public function workspace(): BelongsTo
     {
         return $this->belongsTo(Workspace::class);
     }
 
+    /**
+     * @return BelongsTo<User, self>
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -50,5 +65,21 @@ class WorkspaceMember extends Model
     public function sharedExpenses(): HasMany
     {
         return $this->hasMany(Expense::class, 'shared_with_member_id');
+    }
+
+    /**
+     * @return HasMany<Moment, self>
+     */
+    public function moments(): HasMany
+    {
+        return $this->hasMany(Moment::class, 'created_by_member_id');
+    }
+
+    /**
+     * @return HasMany<MomentReaction, self>
+     */
+    public function momentReactions(): HasMany
+    {
+        return $this->hasMany(MomentReaction::class);
     }
 }

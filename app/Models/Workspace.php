@@ -9,6 +9,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $slug
+ * @property string $type
+ * @property string $timezone
+ * @property int $owner_id
+ * @property array<string, mixed>|null $settings
+ * @property-read User $owner
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, WorkspaceMember> $members
+ */
 class Workspace extends Model
 {
     /** @use HasFactory<WorkspaceFactory> */
@@ -30,11 +41,17 @@ class Workspace extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<User, self>
+     */
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_id');
     }
 
+    /**
+     * @return HasMany<WorkspaceMember, self>
+     */
     public function members(): HasMany
     {
         return $this->hasMany(WorkspaceMember::class);
@@ -70,5 +87,13 @@ class Workspace extends Model
     public function expenses(): HasMany
     {
         return $this->hasMany(Expense::class);
+    }
+
+    /**
+     * @return HasMany<Moment, self>
+     */
+    public function moments(): HasMany
+    {
+        return $this->hasMany(Moment::class);
     }
 }

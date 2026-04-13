@@ -2,15 +2,15 @@ import { type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { Bell, CalendarDays, Lock, LogOut, Mail, Phone } from 'lucide-react';
 
-type ActiveTab = 'dashboard' | 'calendar' | 'billing' | 'expenses';
+type ActiveTab = 'dashboard' | 'calendar' | 'billing' | 'expenses' | 'moments';
 
 const navigation = [
     { key: 'dashboard', label: 'Dashboard', href: '/dashboard', requiresAbility: null, requiresFeature: null },
     { key: 'calendar', label: 'Calendar', href: '/calendar', requiresAbility: null, requiresFeature: null },
     { key: 'billing', label: 'Billing', href: '/billing', requiresAbility: 'billing.manage', requiresFeature: null },
-    { key: 'expenses', label: 'Expenses', href: '#', requiresAbility: 'expenses.view', requiresFeature: 'expense_tracking' },
+    { key: 'expenses', label: 'Expenses', href: '/expenses', requiresAbility: 'expenses.view', requiresFeature: 'expense_tracking' },
     { key: 'messages', label: 'Messages', href: '#', requiresAbility: null, requiresFeature: 'secure_messaging' },
-    { key: 'moments', label: 'Moments', href: '#', requiresAbility: null, requiresFeature: null },
+    { key: 'moments', label: 'Moments', href: '/moments', requiresAbility: null, requiresFeature: null },
     { key: 'mediation', label: 'Mediation', href: '#', requiresAbility: null, requiresFeature: null },
     { key: 'requests', label: 'Requests', href: '#', requiresAbility: null, requiresFeature: 'change_request_workflow' },
 ] as const;
@@ -29,12 +29,8 @@ export default function FamilyLayout({
     const calendarHref = workspaceId ? route('calendar', { workspace: workspaceId }) : route('calendar');
     const billingHref = route('billing');
     const expensesHref = workspaceId ? route('expenses.index', { workspace: workspaceId }) : route('expenses.index');
-    const canManageBilling = workspaceAccess?.abilities?.['billing.manage'] ?? false;
+    const momentsHref = workspaceId ? route('moments.index', { workspace: workspaceId }) : route('moments.index');
     const canUseExpenses = (workspaceAccess?.abilities?.['expenses.view'] ?? false) && (workspaceAccess?.features?.['expense_tracking'] ?? false);
-    const canUseMessages = workspaceAccess?.features?.['secure_messaging'] ?? false;
-    const canUseRequests = workspaceAccess?.features?.['change_request_workflow'] ?? false;
-    const currentPlan = workspaceAccess?.subscription?.plan ?? null;
-    const isOnTrial = workspaceAccess?.subscription?.on_trial ?? false;
 
     return (
         <div className="min-h-screen bg-[#eef8f6] text-slate-900">
@@ -50,11 +46,23 @@ export default function FamilyLayout({
                     <nav className="flex flex-1 flex-wrap items-center gap-4 text-[1.2rem] font-black text-[#55c2b5] lg:gap-6">
                         {navigation.map((item) => {
                             const isActive = item.key === activeTab;
+                            const actualHref =
+                                item.key === 'dashboard'
+                                    ? dashboardHref
+                                    : item.key === 'calendar'
+                                      ? calendarHref
+                                      : item.key === 'billing'
+                                        ? billingHref
+                                      : item.key === 'expenses'
+                                        ? expensesHref
+                                      : item.key === 'moments'
+                                        ? momentsHref
+                                      : item.href;
 
                             // Check if this item is enabled based on abilities and features
                             const hasAbility = item.requiresAbility ? (workspaceAccess?.abilities?.[item.requiresAbility] ?? false) : true;
                             const hasFeature = item.requiresFeature ? (workspaceAccess?.features?.[item.requiresFeature] ?? false) : true;
-                            const isEnabled = hasAbility && hasFeature && item.href !== '#';
+                            const isEnabled = hasAbility && hasFeature && actualHref !== '#';
 
                             // If disabled, show with lock icon
                             if (!isEnabled) {
@@ -69,17 +77,6 @@ export default function FamilyLayout({
                                     </Link>
                                 );
                             }
-
-                            const actualHref =
-                                item.key === 'dashboard'
-                                    ? dashboardHref
-                                    : item.key === 'calendar'
-                                      ? calendarHref
-                                      : item.key === 'billing'
-                                        ? billingHref
-                                      : item.key === 'expenses'
-                                        ? expensesHref
-                                      : item.href;
 
                             return (
                                 <Link
@@ -133,8 +130,15 @@ export default function FamilyLayout({
                                     Billing
                                 </Link>
                                 <span>Messages</span>
-                                <span>Moments</span>
-                                <span>Expenses</span>
+                                <Link href={momentsHref} className="transition hover:text-white">
+                                    Moments
+                                </Link>
+                                <Link
+                                    href={canUseExpenses ? expensesHref : route('billing', { plan: 'plus', mode: 'family' })}
+                                    className="transition hover:text-white"
+                                >
+                                    Expenses
+                                </Link>
                             </div>
                         </div>
 

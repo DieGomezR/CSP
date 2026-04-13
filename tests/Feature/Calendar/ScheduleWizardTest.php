@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceMember;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -20,6 +21,7 @@ test('schedule wizard stores the selected pattern and generates custody events',
         'timezone' => 'America/New_York',
         'settings' => [],
     ]);
+    createCompleteFamilySubscription($owner, 'price_1TKeouGVa0O4LKuhObats41S', 'trialing');
 
     $startingMember = $workspace->members()->where('user_id', $owner->id)->firstOrFail();
 
@@ -79,6 +81,7 @@ test('schedule wizard regeneration replaces previous custody wizard events', fun
         'timezone' => 'America/New_York',
         'settings' => [],
     ]);
+    createCompleteFamilySubscription($owner, 'price_1TKeouGVa0O4LKuhObats41S', 'trialing');
 
     $startingMember = $workspace->members()->where('user_id', $owner->id)->firstOrFail();
 
@@ -117,3 +120,23 @@ test('schedule wizard regeneration replaces previous custody wizard events', fun
     expect($events->count())->toBeGreaterThan(2);
     expect($events->every(fn ($event) => data_get($event->meta, 'pattern') === '2-2-3'))->toBeTrue();
 });
+
+function createCompleteFamilySubscription(User $user, string $priceId, string $status): void
+{
+    $user->forceFill([
+        'stripe_id' => 'cus_test_'.$user->id,
+    ])->save();
+
+    DB::table('subscriptions')->insert([
+        'user_id' => $user->id,
+        'type' => 'default',
+        'stripe_id' => 'sub_test_'.$user->id.'_'.md5($priceId),
+        'stripe_status' => $status,
+        'stripe_price' => $priceId,
+        'quantity' => 1,
+        'trial_ends_at' => now()->addDays(30),
+        'ends_at' => null,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+}

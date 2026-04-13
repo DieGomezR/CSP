@@ -10,6 +10,8 @@ use App\Http\Controllers\Billing\BillingPageController;
 use App\Http\Controllers\Billing\BillingPortalController;
 use App\Http\Controllers\Billing\BillingSuccessController;
 use App\Http\Controllers\FamilyCalendarController;
+use App\Http\Controllers\MomentController;
+use App\Http\Controllers\MomentReactionController;
 use App\Http\Controllers\Onboarding\FamilyOnboardingController;
 use App\Http\Controllers\WorkspaceCalendarFeedController;
 use App\Http\Controllers\WorkspaceInvitationController;
@@ -51,6 +53,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('dashboard', [FamilyCalendarController::class, 'index'])->name('dashboard');
     Route::get('calendar', [FamilyCalendarController::class, 'calendar'])->name('calendar');
+    Route::get('moments', [MomentController::class, 'index'])->name('moments.index');
+    Route::get('moments/create', [MomentController::class, 'create'])->name('moments.create');
+    Route::post('moments', [MomentController::class, 'store'])->name('moments.store');
+    Route::delete('moments/{moment}', [MomentController::class, 'destroy'])->name('moments.destroy');
+    Route::get('moments/{moment}/image', [MomentController::class, 'image'])->name('moments.image');
+    Route::post('moments/{moment}/reactions', [MomentReactionController::class, 'store'])->name('moments.reactions.store');
     Route::middleware(['workspace.ability:expenses.view', 'workspace.feature:expense_tracking'])->group(function () {
         Route::get('expenses', [ExpenseController::class, 'index'])->name('expenses.index');
         Route::get('expenses/create', [ExpenseController::class, 'create'])->name('expenses.create');

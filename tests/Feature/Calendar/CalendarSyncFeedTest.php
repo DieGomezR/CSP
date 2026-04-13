@@ -4,6 +4,7 @@ use App\Models\CalendarEvent;
 use App\Models\CalendarFeed;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -16,6 +17,7 @@ test('family workspaces can open the calendar page', function () {
         'type' => 'family',
         'timezone' => 'America/Bogota',
     ]);
+    createFamilySubscription($user, 'price_1TKeo9GVa0O4LKuhWTs0g3FQ', 'trialing');
 
     $this->actingAs($user)
         ->get(route('calendar', ['workspace' => $workspace->id, 'month' => '2026-04']))
@@ -34,6 +36,7 @@ test('family members can create a sync feed and download it as ics', function ()
         'type' => 'family',
         'timezone' => 'America/Bogota',
     ]);
+    createFamilySubscription($user, 'price_1TKeo9GVa0O4LKuhWTs0g3FQ', 'trialing');
 
     CalendarEvent::factory()->create([
         'workspace_id' => $workspace->id,
@@ -65,3 +68,23 @@ test('family members can create a sync feed and download it as ics', function ()
         ->assertSee('SUMMARY:School pickup', false)
         ->assertSee('RRULE:FREQ=WEEKLY;BYDAY=WE;UNTIL=20260501T045959Z', false);
 });
+
+function createFamilySubscription(User $user, string $priceId, string $status): void
+{
+    $user->forceFill([
+        'stripe_id' => 'cus_test_'.$user->id,
+    ])->save();
+
+    DB::table('subscriptions')->insert([
+        'user_id' => $user->id,
+        'type' => 'default',
+        'stripe_id' => 'sub_test_'.$user->id.'_'.md5($priceId),
+        'stripe_status' => $status,
+        'stripe_price' => $priceId,
+        'quantity' => 1,
+        'trial_ends_at' => now()->addDays(30),
+        'ends_at' => null,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+}
