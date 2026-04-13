@@ -24,7 +24,7 @@ test('users can authenticate using the login screen', function () {
     $response->assertRedirect(route('onboarding.family.create', absolute: false));
 });
 
-test('users with an existing workspace are sent to the dashboard after login', function () {
+test('users with an existing workspace but no active subscription are sent to billing after login', function () {
     $user = User::factory()->create();
     Workspace::factory()->create([
         'owner_id' => $user->id,
@@ -36,7 +36,7 @@ test('users with an existing workspace are sent to the dashboard after login', f
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $response->assertRedirect(route('billing', absolute: false));
 });
 
 test('users can not authenticate with invalid password', function () {

@@ -33,6 +33,9 @@ export default function FamilyLayout({
     const mediationHref = workspaceId ? route('mediation.index', { workspace: workspaceId }) : route('mediation.index');
     const canUseExpenses = (workspaceAccess?.abilities?.['expenses.view'] ?? false) && (workspaceAccess?.features?.['expense_tracking'] ?? false);
     const canUseMediation = workspaceAccess?.features?.['ai_tone_analysis'] ?? false;
+    const canManageBilling = workspaceAccess?.abilities?.['billing.manage'] ?? false;
+    const hasActiveSubscription = workspaceAccess?.subscription?.active ?? false;
+    const shouldLockForBillingSetup = workspaceAccess !== null && !hasActiveSubscription;
 
     return (
         <div className="min-h-screen bg-[#eef8f6] text-slate-900">
@@ -62,6 +65,31 @@ export default function FamilyLayout({
                                       : item.key === 'mediation'
                                         ? mediationHref
                                       : item.href;
+
+                            if (shouldLockForBillingSetup && item.key !== 'billing') {
+                                if (canManageBilling) {
+                                    return (
+                                        <Link
+                                            key={item.key}
+                                            href={billingHref}
+                                            className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-[#ffb21a] bg-[#fff8e6] px-3 py-2 text-sm font-bold text-[#b07c1a] transition hover:bg-[#fff4d6]"
+                                        >
+                                            <Lock className="size-3.5" />
+                                            {item.label}
+                                        </Link>
+                                    );
+                                }
+
+                                return (
+                                    <span
+                                        key={item.key}
+                                        className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-[#d7d8ef] bg-[#f7f9fc] px-3 py-2 text-sm font-bold text-slate-400"
+                                    >
+                                        <Lock className="size-3.5" />
+                                        {item.label}
+                                    </span>
+                                );
+                            }
 
                             // Check if this item is enabled based on abilities and features
                             const hasAbility = item.requiresAbility ? (workspaceAccess?.abilities?.[item.requiresAbility] ?? false) : true;
@@ -140,28 +168,44 @@ export default function FamilyLayout({
                         <div>
                             <p className="text-sm font-black uppercase tracking-[0.16em] text-[#67d2c3]">Product</p>
                             <div className="mt-4 grid gap-3 text-lg text-white/70">
-                                <Link href={calendarHref} className="transition hover:text-white">
-                                    Calendar
-                                </Link>
+                                {hasActiveSubscription ? (
+                                    <Link href={calendarHref} className="transition hover:text-white">
+                                        Calendar
+                                    </Link>
+                                ) : (
+                                    <span className="text-white/40">Calendar</span>
+                                )}
                                 <Link href={billingHref} className="transition hover:text-white">
                                     Billing
                                 </Link>
                                 <span>Messages</span>
-                                <Link href={momentsHref} className="transition hover:text-white">
-                                    Moments
-                                </Link>
-                                <Link
-                                    href={canUseMediation ? mediationHref : route('billing', { plan: 'complete', mode: 'family' })}
-                                    className="transition hover:text-white"
-                                >
-                                    Mediation
-                                </Link>
-                                <Link
-                                    href={canUseExpenses ? expensesHref : route('billing', { plan: 'plus', mode: 'family' })}
-                                    className="transition hover:text-white"
-                                >
-                                    Expenses
-                                </Link>
+                                {hasActiveSubscription ? (
+                                    <Link href={momentsHref} className="transition hover:text-white">
+                                        Moments
+                                    </Link>
+                                ) : (
+                                    <span className="text-white/40">Moments</span>
+                                )}
+                                {hasActiveSubscription ? (
+                                    <Link
+                                        href={canUseMediation ? mediationHref : route('billing', { plan: 'complete', mode: 'family' })}
+                                        className="transition hover:text-white"
+                                    >
+                                        Mediation
+                                    </Link>
+                                ) : (
+                                    <span className="text-white/40">Mediation</span>
+                                )}
+                                {hasActiveSubscription ? (
+                                    <Link
+                                        href={canUseExpenses ? expensesHref : route('billing', { plan: 'plus', mode: 'family' })}
+                                        className="transition hover:text-white"
+                                    >
+                                        Expenses
+                                    </Link>
+                                ) : (
+                                    <span className="text-white/40">Expenses</span>
+                                )}
                             </div>
                         </div>
 

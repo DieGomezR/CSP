@@ -66,7 +66,7 @@ function SubscriptionSummary({ subscription }: { subscription: BillingPageProps[
                     <h2 className="text-lg font-black tracking-tight text-slate-900 sm:text-xl md:text-[1.7rem]">No active subscription yet</h2>
                 </div>
                 <p className="mt-3 text-base leading-7 text-slate-500 sm:mt-4 sm:text-lg sm:leading-8">
-                    Start your 60-day trial below. Subscription status will be synchronized back from Stripe through the webhook.
+                    Start your 60-day trial below.
                 </p>
             </div>
         );
@@ -132,6 +132,11 @@ export default function BillingIndex({
         () => billingModes.find((mode) => mode.key === billingMode)?.label ?? 'Per Parent',
         [billingMode, billingModes],
     );
+    const hasActiveSubscription = subscription.active;
+    const csrfToken =
+        security?.csrf_token ??
+        document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ??
+        '';
 
     const startCheckout = async (mode: BillingMode, planKey: PlanKey) => {
         if (processing) {
@@ -147,11 +152,12 @@ export default function BillingIndex({
         try {
             const response = await fetch(route('billing.checkout'), {
                 method: 'POST',
+                credentials: 'same-origin',
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': security?.csrf_token ?? '',
+                    'X-CSRF-TOKEN': csrfToken,
                 },
                 body: JSON.stringify({
                     plan: planKey,
@@ -194,10 +200,11 @@ export default function BillingIndex({
         try {
             const response = await fetch(route('billing.portal'), {
                 method: 'POST',
+                credentials: 'same-origin',
                 headers: {
                     Accept: 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': security?.csrf_token ?? '',
+                    'X-CSRF-TOKEN': csrfToken,
                 },
             });
 
@@ -223,7 +230,7 @@ export default function BillingIndex({
                     <div>
                         <h1 className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl md:text-[2.8rem]">Billing</h1>
                         <p className="mt-2 text-base text-slate-400 sm:text-lg">
-                            New subscriptions and upgrades happen here. Lower-cost or reduced-coverage changes are routed through Stripe so they can be scheduled safely at renewal.
+                            New subscriptions and upgrades happen here.
                         </p>
                     </div>
 
@@ -238,12 +245,18 @@ export default function BillingIndex({
                             Manage Billing
                         </Button>
 
-                        <Link
-                            href={route('calendar')}
-                            className="inline-flex min-h-[44px] items-center rounded-[1.25rem] bg-[#67d2c3] px-5 py-3 text-sm font-black text-white shadow-sm sm:px-6 sm:text-[1.05rem]"
-                        >
-                            Back to Calendar
-                        </Link>
+                        {hasActiveSubscription ? (
+                            <Link
+                                href={route('calendar')}
+                                className="inline-flex min-h-[44px] items-center rounded-[1.25rem] bg-[#67d2c3] px-5 py-3 text-sm font-black text-white shadow-sm sm:px-6 sm:text-[1.05rem]"
+                            >
+                                Back to Calendar
+                            </Link>
+                        ) : (
+                            <span className="inline-flex min-h-[44px] items-center rounded-[1.25rem] border border-dashed border-[#d7d8ef] bg-[#f7f9fc] px-5 py-3 text-sm font-black text-slate-400 sm:px-6 sm:text-[1.05rem]">
+                                Complete billing to continue
+                            </span>
+                        )}
                     </div>
                 </section>
 
@@ -321,14 +334,14 @@ export default function BillingIndex({
                                         ? 'Current plan'
                                         : planAction.kind === 'upgrade'
                                           ? 'Upgrade now'
-                                          : 'Change in Stripe'
+                                          : 'Change at renewal'
                                     : `Start ${trialDays}-Day Trial`;
                                 const helperText = subscription.active
                                     ? isCurrentPlan
                                         ? 'This is your active selection.'
                                         : planAction.kind === 'upgrade'
-                                          ? 'Applies immediately. Stripe may generate a prorated charge right away.'
-                                          : 'Lower-cost or reduced-coverage changes are managed in Stripe and should take effect at renewal.'
+                                          ? 'Applies immediately. You will be charged a prorated amount for the remainder of the billing cycle.'
+                                          : 'Lower-cost or reduced-coverage changes are managed. They will be scheduled to apply at the end of your current billing period to avoid any disruption.'
                                     : null;
 
                                 return (
@@ -415,16 +428,6 @@ export default function BillingIndex({
                                     </article>
                                 );
                             })}
-                        </div>
-
-                        <div className="mt-6 rounded-[1.4rem] bg-[#f7fbfb] px-4 py-4 text-sm text-slate-500 sm:mt-8 sm:px-5 sm:py-5 sm:text-base">
-                            <p>
-                                Webhook endpoint for Stripe test mode:{' '}
-                                <span className="font-black text-slate-700">{stripe.webhookPath}</span>
-                            </p>
-                            <p className="mt-2">
-                                Upgrades are handled in-app. Downgrades and lower-cost coverage changes are delegated to Stripe to avoid mid-cycle billing ambiguity.
-                            </p>
                         </div>
                     </section>
                 </div>

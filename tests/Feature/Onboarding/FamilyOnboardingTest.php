@@ -2,9 +2,14 @@
 
 use App\Models\User;
 use App\Models\Workspace;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function () {
+    $this->seed(RolesAndPermissionsSeeder::class);
+});
 
 test('family onboarding screen can be rendered for users without a workspace', function () {
     $user = User::factory()->create();
@@ -22,7 +27,7 @@ test('users with an existing workspace are redirected away from family onboardin
 
     $this->actingAs($user)
         ->get(route('onboarding.family.create'))
-        ->assertRedirect(route('dashboard', absolute: false));
+        ->assertRedirect(route('billing', absolute: false));
 });
 
 test('family onboarding creates the first workspace membership and children', function () {
@@ -45,7 +50,7 @@ test('family onboarding creates the first workspace membership and children', fu
         ],
     ]);
 
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $response->assertRedirect(route('billing', absolute: false));
 
     $workspace = Workspace::query()->first();
 

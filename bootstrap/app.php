@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\SecureHeaders;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\EnsureActiveWorkspaceSubscription;
 use App\Http\Middleware\EnsureWorkspaceAbility;
 use App\Http\Middleware\EnsureWorkspaceFeature;
 use Illuminate\Foundation\Application;
@@ -33,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
+            'workspace.subscription' => EnsureActiveWorkspaceSubscription::class,
             'workspace.ability' => EnsureWorkspaceAbility::class,
             'workspace.feature' => EnsureWorkspaceFeature::class,
         ]);

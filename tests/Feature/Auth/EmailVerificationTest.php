@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
@@ -18,6 +19,9 @@ test('email verification screen can be rendered', function () {
 
 test('email can be verified', function () {
     $user = User::factory()->unverified()->create();
+    Workspace::factory()->create([
+        'owner_id' => $user->id,
+    ]);
 
     Event::fake();
 
@@ -31,7 +35,7 @@ test('email can be verified', function () {
 
     Event::assertDispatched(Verified::class);
     expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
-    $response->assertRedirect(route('onboarding.family.create', ['verified' => 1], false));
+    $response->assertRedirect(route('billing', ['verified' => 1], false));
 });
 
 test('email is not verified with invalid hash', function () {

@@ -1,7 +1,8 @@
 import FamilyLayout from '@/components/family-layout';
 import { type MediationWorkspace } from '@/types/mediation';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { useState } from 'react';
+import { type SharedData } from '@/types';
 
 type Props = {
     workspace: MediationWorkspace;
@@ -12,10 +13,67 @@ type Props = {
 };
 
 export default function MediationReportPage({ workspace, defaults }: Props) {
+    const { security } = usePage<SharedData>().props;
     const [start, setStart] = useState(defaults.start);
     const [end, setEnd] = useState(defaults.end);
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    const printHref = `${route('mediation.report.print', { workspace: workspace.id })}?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`;
+    const printHref = `/mediation/court-report/print?workspace=${encodeURIComponent(String(workspace.id))}&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`;
+    const openPdf = async () => {
+        if (isGenerating) {
+            return;
+        }
+
+        setError(null);
+        setIsGenerating(true);
+
+        try {
+            const response = await fetch(printHref, {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: {
+                    Accept: 'application/pdf',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN':
+                        security?.csrf_token ??
+                        document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ??
+                        '',
+                },
+            });
+
+            const contentType = response.headers.get('content-type') ?? '';
+
+            if (!response.ok || !contentType.includes('application/pdf')) {
+                const preview = contentType.includes('text/html')
+                    ? (await response.text()).slice(0, 140).replace(/\s+/g, ' ')
+                    : '';
+
+                throw new Error(
+                    `The report could not be generated as PDF. Response: ${response.status} ${contentType || 'unknown content type'}${response.url ? ` @ ${response.url}` : ''}${preview ? ` :: ${preview}` : ''}`,
+                );
+            }
+
+            const pdfBlob = await response.blob();
+            const pdfUrl = URL.createObjectURL(pdfBlob);
+            const openedWindow = window.open(pdfUrl, '_blank', 'noopener,noreferrer');
+
+            if (openedWindow === null) {
+                const downloadLink = document.createElement('a');
+                downloadLink.href = pdfUrl;
+                downloadLink.download = `communication-climate-report-${workspace.id}.pdf`;
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+            }
+
+            window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 60_000);
+        } catch (generationError) {
+            setError(generationError instanceof Error ? generationError.message : 'The report could not be generated as PDF.');
+        } finally {
+            setIsGenerating(false);
+        }
+    };
 
     return (
         <>
@@ -68,14 +126,16 @@ export default function MediationReportPage({ workspace, defaults }: Props) {
                         Legal disclaimer: this report is generated automatically from platform records and rule-based communication analysis. It is not legal advice, not a forensic opinion, and should be reviewed by qualified counsel before any formal use.
                     </div>
 
-                    <a
-                        href={printHref}
-                        target="_blank"
-                        rel="noreferrer"
+                    {error && <div className="mt-6 rounded-[1rem] border border-[#f4d6d6] bg-white px-5 py-4 text-sm font-semibold text-[#c35b5b]">{error}</div>}
+
+                    <button
+                        type="button"
+                        onClick={openPdf}
+                        disabled={isGenerating}
                         className="mt-6 inline-flex min-h-[3.4rem] w-full items-center justify-center rounded-[1rem] bg-[linear-gradient(90deg,#9a6cff_0%,#6f8cff_100%)] px-6 text-sm font-black text-white"
                     >
-                        Generate Server PDF
-                    </a>
+                        {isGenerating ? 'Generating PDF...' : 'Generate Server PDF'}
+                    </button>
                 </section>
             </FamilyLayout>
         </>

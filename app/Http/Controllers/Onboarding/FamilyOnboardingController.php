@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Onboarding;
 use App\Actions\Onboarding\CreateInitialFamilyWorkspace;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Onboarding\StoreFamilyOnboardingRequest;
+use App\Support\AuthRedirect;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -18,7 +19,7 @@ class FamilyOnboardingController extends Controller
     public function create(Request $request): Response|RedirectResponse
     {
         if ($request->user()->workspaces()->exists()) {
-            return to_route('dashboard');
+            return redirect()->to(AuthRedirect::path($request->user()));
         }
 
         return Inertia::render('onboarding/family', [
@@ -32,12 +33,12 @@ class FamilyOnboardingController extends Controller
     public function store(StoreFamilyOnboardingRequest $request, CreateInitialFamilyWorkspace $createWorkspace): RedirectResponse
     {
         if ($request->user()->workspaces()->exists()) {
-            return to_route('dashboard');
+            return redirect()->to(AuthRedirect::path($request->user()));
         }
 
         $createWorkspace->handle($request->user(), $request->validated());
 
-        return to_route('dashboard')->with('status', 'family-workspace-created');
+        return redirect()->to(AuthRedirect::path($request->user()))->with('status', 'family-workspace-created');
     }
 
     /**

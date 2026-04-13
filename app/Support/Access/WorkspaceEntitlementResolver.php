@@ -55,6 +55,11 @@ final class WorkspaceEntitlementResolver
         );
     }
 
+    public function workspaceHasActiveSubscription(Workspace $workspace): bool
+    {
+        return $this->resolveSubscriptionState($workspace)['active'];
+    }
+
     public function hasFeature(User $user, Workspace $workspace, WorkspaceFeature|string $feature): bool
     {
         $feature = $feature instanceof WorkspaceFeature ? $feature : WorkspaceFeature::from($feature);
