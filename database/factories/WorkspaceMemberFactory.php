@@ -22,7 +22,7 @@ class WorkspaceMemberFactory extends Factory
         return [
             'workspace_id' => Workspace::factory(),
             'user_id' => User::factory(),
-            'role' => fake()->randomElement(['owner', 'admin', 'member', 'caregiver']),
+            'role' => fake()->randomElement(['owner', 'coparent', 'member', 'caregiver']),
             'status' => 'active',
             'notification_preferences' => [
                 'email' => true,

@@ -25,8 +25,32 @@ export interface SharedData {
     name: string;
     quote: { message: string; author: string };
     auth: Auth;
+    appearance?: {
+        theme: 'warm' | 'modern' | 'minimal';
+    };
+    workspaceAccess?: {
+        workspace_id: number;
+        membership_role: string;
+        is_owner: boolean;
+        features: Record<string, boolean>;
+        abilities: Record<string, boolean>;
+        subscription: {
+            active: boolean;
+            on_trial: boolean;
+            status: string | null;
+            plan: string | null;
+            plan_label: string | null;
+            billing_mode: string | null;
+            billing_mode_label: string | null;
+            covered: boolean;
+        };
+    } | null;
+    security?: {
+        csrf_token?: string | null;
+    };
     flash: {
         status?: string | null;
+        error?: string | null;
     };
     [key: string]: unknown;
 }
@@ -40,4 +64,20 @@ export interface User {
     created_at: string;
     updated_at: string;
     [key: string]: unknown; // This allows for additional properties...
+}
+
+export interface BlogPost {
+    slug: string;
+    title: string;
+    excerpt: string;
+    category: string;
+    author: string;
+    published_at: string;
+    reading_time?: string;
+    hero_tone?: string;
+    content?: Array<{
+        type: 'paragraph' | 'heading' | 'list';
+        body?: string;
+        items?: string[];
+    }>;
 }

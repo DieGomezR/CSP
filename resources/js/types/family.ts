@@ -14,6 +14,14 @@ export type WorkspaceMember = {
     joined_at: string | null;
 };
 
+export type WorkspacePendingInvitation = {
+    id: number;
+    email: string;
+    role: string;
+    invited_at: string;
+    expires_at: string | null;
+};
+
 export type WorkspaceSummary = {
     id: number;
     name: string;
@@ -93,12 +101,14 @@ export type WorkspacePayload = {
     events_count: number;
     children: WorkspaceChild[];
     members: WorkspaceMember[];
+    pending_invitations: WorkspacePendingInvitation[];
     setup: {
         custody_schedule_completed: boolean;
         custody_schedule_completed_at: string | null;
     };
     custody_schedule: {
         completed_at: string | null;
+        pattern: 'alternating-weeks' | '2-2-3' | '3-4-4-3' | '5-2-2-5' | 'every-other-weekend' | 'every-other-weekend-midweek';
         children_ids: number[];
         starting_parent_member_id: number | null;
         start_date: string | null;

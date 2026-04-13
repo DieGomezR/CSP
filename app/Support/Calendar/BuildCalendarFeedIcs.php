@@ -116,7 +116,11 @@ class BuildCalendarFeedIcs
         }
 
         if ($event->recurrence_until) {
-            $parts[] = 'UNTIL='.CarbonImmutable::instance($event->recurrence_until)->utc()->format('Ymd\THis\Z');
+            $rawRecurrenceUntil = $event->getRawOriginal('recurrence_until') ?: (string) $event->recurrence_until;
+            $parts[] = 'UNTIL='.CarbonImmutable::parse(
+                $rawRecurrenceUntil,
+                $event->timezone ?: config('app.timezone')
+            )->utc()->format('Ymd\THis\Z');
         }
 
         return implode(';', $parts);

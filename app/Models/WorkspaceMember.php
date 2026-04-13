@@ -6,6 +6,7 @@ use Database\Factories\WorkspaceMemberFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class WorkspaceMember extends Model
 {
@@ -39,5 +40,15 @@ class WorkspaceMember extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function createdExpenses(): HasMany
+    {
+        return $this->hasMany(Expense::class, 'created_by_member_id');
+    }
+
+    public function sharedExpenses(): HasMany
+    {
+        return $this->hasMany(Expense::class, 'shared_with_member_id');
     }
 }

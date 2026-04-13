@@ -40,6 +40,11 @@ class Workspace extends Model
         return $this->hasMany(WorkspaceMember::class);
     }
 
+    public function invitations(): HasMany
+    {
+        return $this->hasMany(WorkspaceInvitation::class);
+    }
+
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'workspace_members')
@@ -60,5 +65,10 @@ class Workspace extends Model
     public function calendarFeeds(): HasMany
     {
         return $this->hasMany(CalendarFeed::class);
+    }
+
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(Expense::class);
     }
 }

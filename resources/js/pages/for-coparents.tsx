@@ -8,12 +8,15 @@ import {
     Clock3,
     Link2,
     Lock,
+    Menu,
     Paperclip,
     Scale,
     Shield,
     Sparkles,
     Wallet,
+    X,
 } from 'lucide-react';
+import { useState } from 'react';
 
 const heroBullets = [
     { icon: Link2, label: 'SHA256 Hash Chains' },
@@ -106,28 +109,73 @@ const aiCards = [
 ] as const;
 
 function Header({ authUser }: { authUser: SharedData['auth']['user'] | undefined }) {
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
     return (
         <header className="bg-[#2d4f7a] text-white">
-            <div className="mx-auto flex max-w-[1180px] items-center justify-between px-8 py-8">
-                <Link href={route('home')} className="text-[1.95rem] font-black tracking-tight text-white">
+            <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-4 px-4 py-6 sm:px-6 sm:py-8 md:px-8 md:py-8">
+                <Link href={route('home')} className="text-2xl font-black tracking-tight text-white sm:text-[1.95rem]">
                     KidSchedule
                 </Link>
 
-                <div className="flex items-center gap-8 text-base font-bold">
+                <div className="flex items-center gap-6 text-sm font-bold sm:text-base md:gap-8 md:text-base">
                     {authUser ? (
-                        <Link href={route('dashboard')} className="text-white/88 transition hover:text-white">
+                        <Link href={route('dashboard')} className="hidden text-white/88 transition hover:text-white md:inline-block">
                             Open App
                         </Link>
                     ) : (
-                        <Link href={route('login')} className="text-white/88 transition hover:text-white">
+                        <Link href={route('login')} className="hidden text-white/88 transition hover:text-white md:inline-block">
                             Log In
                         </Link>
                     )}
-                    <Link href={route('home')} className="text-white/88 transition hover:text-white">
+                    <Link href={route('home')} className="hidden text-white/88 transition hover:text-white md:inline-block">
                         Back to Home
                     </Link>
+
+                    {/* Mobile menu button */}
+                    <button
+                        type="button"
+                        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                        className="rounded-lg p-2 text-white/88 transition hover:bg-white/10 md:hidden"
+                        aria-label="Toggle menu"
+                        aria-expanded={mobileMenuOpen}
+                    >
+                        {mobileMenuOpen ? <X className="size-6" /> : <Menu className="size-6" />}
+                    </button>
                 </div>
             </div>
+
+            {/* Mobile menu */}
+            {mobileMenuOpen && (
+                <div className="border-t border-white/15 bg-[#264a6f] px-4 py-4 shadow-lg md:hidden">
+                    <nav className="space-y-3">
+                        {authUser ? (
+                            <Link
+                                href={route('dashboard')}
+                                className="block rounded-lg px-4 py-3 text-base font-bold text-white/88 transition hover:bg-white/10 hover:text-white"
+                                onClick={() => setMobileMenuOpen(false)}
+                            >
+                                Open App
+                            </Link>
+                        ) : (
+                            <Link
+                                href={route('login')}
+                                className="block rounded-lg px-4 py-3 text-base font-bold text-white/88 transition hover:bg-white/10 hover:text-white"
+                                onClick={() => setMobileMenuOpen(false)}
+                            >
+                                Log In
+                            </Link>
+                        )}
+                        <Link
+                            href={route('home')}
+                            className="block rounded-lg px-4 py-3 text-base font-bold text-white/88 transition hover:bg-white/10 hover:text-white"
+                            onClick={() => setMobileMenuOpen(false)}
+                        >
+                            Back to Home
+                        </Link>
+                    </nav>
+                </div>
+            )}
         </header>
     );
 }
@@ -142,12 +190,12 @@ function FeatureCard({
     body: string;
 }) {
     return (
-        <article className="rounded-[1.75rem] border border-[#d8f0ef] bg-[#fbfcfe] p-7 shadow-[0_24px_45px_-40px_rgba(15,23,42,0.28)]">
-            <div className="inline-flex rounded-[1rem] bg-[#274d7c] p-4 text-white">
-                <Icon className="size-6" />
+        <article className="rounded-[1.35rem] border border-[#d8f0ef] bg-[#fbfcfe] p-6 shadow-[0_24px_45px_-40px_rgba(15,23,42,0.28)] sm:rounded-[1.75rem] sm:p-8">
+            <div className="inline-flex rounded-[0.85rem] bg-[#274d7c] p-3.5 text-white sm:rounded-[1rem] sm:p-4">
+                <Icon className="size-5 sm:size-6" />
             </div>
-            <h3 className="mt-6 text-[1.95rem] font-black tracking-tight text-slate-900">{title}</h3>
-            <p className="mt-3 text-[1.08rem] leading-8 text-slate-500">{body}</p>
+            <h3 className="mt-5 text-xl font-black tracking-tight text-slate-900 sm:mt-6 sm:text-2xl md:text-[1.95rem]">{title}</h3>
+            <p className="mt-2.5 text-base leading-7 text-slate-500 sm:mt-3 sm:text-[1.08rem] sm:leading-8">{body}</p>
         </article>
     );
 }
@@ -164,40 +212,40 @@ export default function ForCoParents() {
                 <Header authUser={auth.user} />
 
                 <main>
-                    <section className="bg-[#2d4f7a] pb-22 text-white">
-                        <div className="mx-auto max-w-[1180px] px-8 pt-18 text-center">
-                            <div className="mx-auto inline-flex rounded-full border border-white/18 bg-white/9 px-6 py-3 text-[0.92rem] font-black uppercase tracking-[0.14em] text-white/92">
+                    <section className="bg-[#2d4f7a] pb-20 text-white sm:pb-22 md:pb-22">
+                        <div className="mx-auto max-w-[1180px] px-4 pt-14 text-center sm:px-6 sm:pt-16 md:px-8 md:pt-18">
+                            <div className="mx-auto inline-flex rounded-full border border-white/18 bg-white/9 px-4 py-2.5 text-[0.8rem] font-black uppercase tracking-[0.12em] text-white/92 sm:px-6 sm:py-3 sm:text-[0.92rem]">
                                 For separated & divorced parents
                             </div>
 
-                            <h1 className="mx-auto mt-8 max-w-[760px] text-[4.35rem] leading-[1.05] font-black tracking-[-0.04em] text-white">
+                            <h1 className="mx-auto mt-5 max-w-[760px] text-4xl leading-[1.05] font-black tracking-[-0.04em] text-white sm:mt-7 sm:text-5xl md:mt-8 md:text-6xl lg:text-7xl">
                                 Co-parenting made peaceful.
                                 <br />
                                 Court-ready when it&apos;s not.
                             </h1>
 
-                            <p className="mx-auto mt-7 max-w-[720px] text-[1.2rem] leading-10 text-white/84">
+                            <p className="mx-auto mt-5 max-w-[720px] text-base leading-7 text-white/84 sm:mt-7 sm:text-[1.2rem] sm:leading-10">
                                 Tamper-proof messaging. Documented everything. Built for your sanity and your lawyer&apos;s.
                             </p>
 
-                            <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+                            <div className="mt-7 flex flex-col gap-3 sm:mt-10 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-4">
                                 <a
                                     href={primaryHref}
-                                    className="rounded-[1.15rem] bg-[linear-gradient(180deg,#72d7ca_0%,#61cec0_100%)] px-10 py-5 text-[1.08rem] font-black text-white shadow-[0_18px_40px_-20px_rgba(77,191,174,0.72)] transition hover:translate-y-[-1px]"
+                                    className="min-h-[44px] items-center justify-center rounded-[1.15rem] bg-[linear-gradient(180deg,#72d7ca_0%,#61cec0_100%)] px-7 py-4 text-center text-base font-black text-white shadow-[0_18px_40px_-20px_rgba(77,191,174,0.72)] transition hover:translate-y-[-1px] sm:flex sm:px-10 sm:py-5 sm:text-[1.08rem]"
                                 >
                                     Start 60-Day Free Trial
                                 </a>
                                 <a
                                     href="#coparent-features"
-                                    className="rounded-[1.15rem] border border-white/38 bg-transparent px-10 py-5 text-[1.08rem] font-black text-white transition hover:bg-white/6"
+                                    className="min-h-[44px] items-center justify-center rounded-[1.15rem] border border-white/38 bg-transparent px-7 py-4 text-center text-base font-black text-white transition hover:bg-white/6 sm:flex sm:px-10 sm:py-5 sm:text-[1.08rem]"
                                 >
                                     See All Features
                                 </a>
                             </div>
 
-                            <div className="mt-12 flex flex-wrap items-center justify-center gap-8 text-[1rem] font-bold text-white/88">
+                            <div className="mt-8 flex flex-wrap items-center justify-center gap-5 text-sm font-bold text-white/88 sm:mt-12 sm:gap-8 sm:text-[1rem]">
                                 {heroBullets.map((item) => (
-                                    <div key={item.label} className="flex items-center gap-3">
+                                    <div key={item.label} className="flex items-center gap-2.5">
                                         <item.icon className="size-4 text-[#f4c063]" />
                                         <span>{item.label}</span>
                                     </div>
@@ -206,47 +254,47 @@ export default function ForCoParents() {
                         </div>
                     </section>
 
-                    <section id="coparent-features" className="mx-auto max-w-[1280px] px-8 py-18">
+                    <section id="coparent-features" className="mx-auto max-w-[1280px] px-4 py-12 sm:px-6 sm:py-16 md:px-8 md:py-18">
                         <div className="text-center">
-                            <h2 className="text-[3rem] font-black tracking-tight text-slate-900">Built for high-conflict situations</h2>
-                            <p className="mx-auto mt-3 max-w-[760px] text-[1.18rem] text-slate-500">
+                            <h2 className="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl md:text-[3rem]">Built for high-conflict situations</h2>
+                            <p className="mx-auto mt-3 max-w-[760px] text-base text-slate-500 sm:text-[1.18rem]">
                                 Every feature designed with documentation and evidence in mind
                             </p>
                         </div>
 
-                        <div className="mt-12 grid gap-6 lg:grid-cols-3">
+                        <div className="mt-8 grid gap-5 sm:mt-12 sm:grid-cols-2 lg:grid-cols-3">
                             {featureCards.map((feature) => (
                                 <FeatureCard key={feature.title} icon={feature.icon} title={feature.title} body={feature.body} />
                             ))}
                         </div>
                     </section>
 
-                    <section className="mx-auto max-w-[1180px] px-8 py-14">
-                        <div className="grid gap-12 lg:grid-cols-[1fr_0.94fr] lg:items-start">
+                    <section className="mx-auto max-w-[1180px] px-4 py-12 sm:px-6 sm:py-14 md:px-8 md:py-14">
+                        <div className="grid gap-10 lg:grid-cols-[1fr_0.94fr] lg:items-start">
                             <div>
-                                <h2 className="text-[3rem] font-black tracking-tight text-slate-900">Evidence that holds up</h2>
-                                <div className="mt-8 grid gap-6">
+                                <h2 className="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl md:text-[3rem]">Evidence that holds up</h2>
+                                <div className="mt-6 grid gap-5 sm:mt-8">
                                     {evidenceItems.map((item, index) => (
-                                        <div key={item.title} className="grid grid-cols-[auto_1fr] gap-4">
+                                        <div key={item.title} className="grid grid-cols-[auto_1fr] gap-3 sm:gap-4">
                                             <div
-                                                className={`mt-1 flex h-11 w-11 items-center justify-center rounded-xl text-white ${
+                                                className={`mt-0.5 flex h-10 w-10 items-center justify-center rounded-xl text-white sm:h-11 sm:w-11 ${
                                                     index === 3 ? 'bg-[#3fba8d]' : 'bg-[#274d7c]'
                                                 }`}
                                             >
-                                                <item.icon className="size-5" />
+                                                <item.icon className="size-4 sm:size-5" />
                                             </div>
                                             <div>
-                                                <h3 className="text-[1.6rem] font-black tracking-tight text-slate-900">{item.title}</h3>
-                                                <p className="mt-2 text-[1.08rem] leading-8 text-slate-500">{item.body}</p>
+                                                <h3 className="text-lg font-black tracking-tight text-slate-900 sm:text-xl md:text-[1.6rem]">{item.title}</h3>
+                                                <p className="mt-1.5 text-base leading-7 text-slate-500 sm:mt-2 sm:text-[1.08rem] sm:leading-8">{item.body}</p>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             </div>
 
-                            <div className="rounded-[1.9rem] bg-[#2d4f7a] px-8 py-8 text-white shadow-[0_30px_65px_-44px_rgba(15,23,42,0.5)]">
-                                <h3 className="text-center text-[2rem] font-black tracking-tight">How hash chains work</h3>
-                                <div className="mt-8 rounded-[1.35rem] bg-[#233f63] px-6 py-6 font-mono text-[0.92rem] text-white/88">
+                            <div className="rounded-[1.5rem] bg-[#2d4f7a] px-5 py-6 text-white shadow-[0_30px_65px_-44px_rgba(15,23,42,0.5)] sm:rounded-[1.9rem] sm:px-8 sm:py-8">
+                                <h3 className="text-center text-xl font-black tracking-tight sm:text-2xl md:text-[2rem]">How hash chains work</h3>
+                                <div className="mt-6 rounded-[1.15rem] bg-[#233f63] px-4 py-5 font-mono text-[0.82rem] text-white/88 sm:mt-8 sm:rounded-[1.35rem] sm:px-6 sm:py-6 sm:text-[0.92rem]">
                                     <p className="text-[#74d6ca]">Message #1</p>
                                     <p className="mt-2">hash: a7f3c...</p>
                                     <p className="mt-5 text-center text-white/65">v</p>
@@ -256,7 +304,7 @@ export default function ForCoParents() {
                                     <p className="mt-5 text-[#74d6ca]">Message #3</p>
                                     <p className="mt-2">prev_hash: b82d... hash: c9f1a...</p>
                                 </div>
-                                <p className="mt-8 text-center text-[1.05rem] leading-8 text-white/84">
+                                <p className="mt-6 text-center text-sm leading-7 text-white/84 sm:mt-8 sm:text-[1.05rem] sm:leading-8">
                                     Change any message and the entire chain breaks.
                                     <br />
                                     Instantly detectable.
@@ -265,43 +313,43 @@ export default function ForCoParents() {
                         </div>
                     </section>
 
-                    <section className="mx-auto max-w-[980px] px-8 py-16 text-center">
-                        <h2 className="text-[3rem] font-black tracking-tight text-slate-900">AI that keeps the peace</h2>
-                        <p className="mx-auto mt-3 max-w-[720px] text-[1.14rem] text-slate-500">
+                    <section className="mx-auto max-w-[980px] px-4 py-12 text-center sm:px-6 sm:py-16 md:px-8 md:py-16">
+                        <h2 className="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl md:text-[3rem]">AI that keeps the peace</h2>
+                        <p className="mx-auto mt-3 max-w-[720px] text-base text-slate-500 sm:text-[1.14rem]">
                             Reduce conflict before it starts with intelligent communication tools
                         </p>
 
-                        <div className="mt-10 grid gap-5 md:grid-cols-2">
+                        <div className="mt-8 grid gap-4 sm:mt-10 sm:grid-cols-2 sm:gap-5">
                             {aiCards.map((card) => (
-                                <article key={card.title} className="rounded-[1.55rem] border border-[#bfe4ff] bg-[#e8f4ff] px-7 py-6 text-left shadow-[0_20px_40px_-35px_rgba(15,23,42,0.25)]">
+                                <article key={card.title} className="rounded-[1.35rem] border border-[#bfe4ff] bg-[#e8f4ff] p-6 text-left shadow-[0_20px_40px_-35px_rgba(15,23,42,0.25)] sm:rounded-[1.55rem] sm:p-7">
                                     <div className="flex items-center gap-3 text-slate-900">
                                         <card.icon className="size-5 text-[#d768cc]" />
-                                        <p className="text-[1.35rem] font-black tracking-tight">{card.title}</p>
+                                        <p className="text-lg font-black tracking-tight sm:text-xl md:text-[1.35rem]">{card.title}</p>
                                     </div>
-                                    <p className="mt-3 text-[1.03rem] leading-8 text-slate-500">{card.body}</p>
+                                    <p className="mt-2.5 text-base leading-7 text-slate-500 sm:mt-3 sm:text-[1.03rem] sm:leading-8">{card.body}</p>
                                 </article>
                             ))}
                         </div>
                     </section>
 
-                    <section className="mt-4 bg-[#2d4f7a] py-18 text-white">
-                        <div className="mx-auto max-w-[840px] px-8 text-center">
-                            <h2 className="text-[3.2rem] font-black tracking-tight">Document everything. Stress less.</h2>
-                            <p className="mx-auto mt-5 max-w-[760px] text-[1.18rem] leading-9 text-white/84">
+                    <section className="mt-4 bg-[#2d4f7a] py-14 text-white sm:py-16 md:py-18">
+                        <div className="mx-auto max-w-[840px] px-4 text-center sm:px-6 md:px-8">
+                            <h2 className="text-3xl font-black tracking-tight sm:text-4xl md:text-[3.2rem]">Document everything. Stress less.</h2>
+                            <p className="mx-auto mt-4 max-w-[760px] text-base leading-8 text-white/84 sm:mt-5 sm:text-[1.18rem] sm:leading-9">
                                 Join thousands of co-parents who&apos;ve traded anxiety for clarity. Every message saved. Every exchange documented. Every expense tracked.
                             </p>
                             <a
                                 href={primaryHref}
-                                className="mt-10 inline-flex rounded-[1.1rem] bg-[linear-gradient(180deg,#72d7ca_0%,#61cec0_100%)] px-9 py-5 text-[1.08rem] font-black text-white shadow-[0_18px_40px_-20px_rgba(77,191,174,0.72)] transition hover:translate-y-[-1px]"
+                                className="mt-8 inline-flex min-h-[44px] items-center justify-center rounded-[1.1rem] bg-[linear-gradient(180deg,#72d7ca_0%,#61cec0_100%)] px-7 py-4 text-base font-black text-white shadow-[0_18px_40px_-20px_rgba(77,191,174,0.72)] transition hover:translate-y-[-1px] sm:mt-10 sm:px-9 sm:py-5 sm:text-[1.08rem]"
                             >
                                 Start Your 60-Day Free Trial
                             </a>
-                            <p className="mt-5 text-[0.98rem] text-white/58">Setup takes 2 minutes. Cancel anytime.</p>
+                            <p className="mt-4 text-sm text-white/58 sm:mt-5 sm:text-[0.98rem]">Setup takes 2 minutes. Cancel anytime.</p>
                         </div>
                     </section>
                 </main>
 
-                <footer className="bg-[#131d2f] py-8 text-center text-sm text-white/62">© 2026 KidSchedule. Terms · Privacy</footer>
+                <footer className="bg-[#131d2f] py-6 text-center text-xs text-white/62 sm:py-8 sm:text-sm">© 2026 KidSchedule. Terms · Privacy</footer>
             </div>
         </>
     );

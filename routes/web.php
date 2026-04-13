@@ -1,9 +1,18 @@
 <?php
 
+use App\Http\Controllers\AppearanceController;
+use App\Http\Controllers\BlogController;
 use App\Http\Controllers\CalendarFeedSubscriptionController;
+use App\Http\Controllers\ChildController;
+use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\Billing\BillingCheckoutController;
+use App\Http\Controllers\Billing\BillingPageController;
+use App\Http\Controllers\Billing\BillingPortalController;
+use App\Http\Controllers\Billing\BillingSuccessController;
 use App\Http\Controllers\FamilyCalendarController;
 use App\Http\Controllers\Onboarding\FamilyOnboardingController;
 use App\Http\Controllers\WorkspaceCalendarFeedController;
+use App\Http\Controllers\WorkspaceInvitationController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -23,23 +32,69 @@ Route::get('/pta', function () {
     return Inertia::render('pta');
 })->name('pta');
 
+Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');
+Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
+
 Route::get('calendar-feeds/{token}/family.ics', [CalendarFeedSubscriptionController::class, 'show'])
     ->name('calendar-feeds.show');
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('onboarding/family', [FamilyOnboardingController::class, 'create'])->name('onboarding.family.create');
     Route::post('onboarding/family', [FamilyOnboardingController::class, 'store'])->name('onboarding.family.store');
 
+    Route::middleware('workspace.ability:billing.manage')->group(function () {
+        Route::get('billing', [BillingPageController::class, 'index'])->name('billing');
+        Route::post('billing/checkout', [BillingCheckoutController::class, 'store'])->name('billing.checkout');
+        Route::post('billing/portal', [BillingPortalController::class, 'store'])->name('billing.portal');
+        Route::get('billing/success', [BillingSuccessController::class, 'show'])->name('billing.success');
+    });
+
     Route::get('dashboard', [FamilyCalendarController::class, 'index'])->name('dashboard');
     Route::get('calendar', [FamilyCalendarController::class, 'calendar'])->name('calendar');
-    Route::get('calendar/schedule-wizard', [FamilyCalendarController::class, 'scheduleWizard'])->name('calendar.schedule-wizard');
-    Route::post('workspaces/{workspace}/schedule-wizard', [FamilyCalendarController::class, 'storeScheduleWizard'])
-        ->name('workspaces.schedule-wizard.store');
+    Route::middleware(['workspace.ability:expenses.view', 'workspace.feature:expense_tracking'])->group(function () {
+        Route::get('expenses', [ExpenseController::class, 'index'])->name('expenses.index');
+        Route::get('expenses/create', [ExpenseController::class, 'create'])->name('expenses.create');
+        Route::post('expenses', [ExpenseController::class, 'store'])->name('expenses.store');
+        Route::get('expenses/{expense}/edit', [ExpenseController::class, 'edit'])->name('expenses.edit');
+        Route::put('expenses/{expense}', [ExpenseController::class, 'update'])->name('expenses.update');
+        Route::post('expenses/{expense}/accept', [ExpenseController::class, 'accept'])->name('expenses.accept');
+        Route::post('expenses/{expense}/reopen', [ExpenseController::class, 'reopen'])->name('expenses.reopen');
+        Route::delete('expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
+    });
+    Route::middleware(['workspace.ability:custody.manage', 'workspace.feature:custody_schedule_templates'])->group(function () {
+        Route::get('calendar/schedule-wizard', [FamilyCalendarController::class, 'scheduleWizard'])->name('calendar.schedule-wizard');
+        Route::post('workspaces/{workspace}/schedule-wizard', [FamilyCalendarController::class, 'storeScheduleWizard'])
+            ->name('workspaces.schedule-wizard.store');
+    });
+    Route::middleware(['workspace.ability:custody.manage', 'workspace.feature:webcal_sync'])->group(function () {
+        Route::post('workspaces/{workspace}/calendar-feeds', [WorkspaceCalendarFeedController::class, 'store'])
+            ->name('workspaces.calendar-feeds.store');
+        Route::delete('workspaces/{workspace}/calendar-feeds/{calendarFeed}', [WorkspaceCalendarFeedController::class, 'destroy'])
+            ->name('workspaces.calendar-feeds.destroy');
+    });
     Route::post('workspaces/{workspace}/events', [FamilyCalendarController::class, 'store'])->name('workspaces.events.store');
-    Route::post('workspaces/{workspace}/calendar-feeds', [WorkspaceCalendarFeedController::class, 'store'])
-        ->name('workspaces.calendar-feeds.store');
-    Route::delete('workspaces/{workspace}/calendar-feeds/{calendarFeed}', [WorkspaceCalendarFeedController::class, 'destroy'])
-        ->name('workspaces.calendar-feeds.destroy');
+
+    // Children CRUD (owner only via custody.manage ability)
+    Route::middleware('workspace.ability:custody.manage')->group(function () {
+        Route::get('workspaces/{workspace}/children', [ChildController::class, 'index'])->name('children.index');
+        Route::post('workspaces/{workspace}/children', [ChildController::class, 'store'])->name('children.store');
+        Route::put('workspaces/{workspace}/children/{child}', [ChildController::class, 'update'])->name('children.update');
+        Route::delete('workspaces/{workspace}/children/{child}', [ChildController::class, 'destroy'])->name('children.destroy');
+    });
+
+    // Workspace Members & Invitations (owner only via billing.manage ability)
+    Route::middleware('workspace.ability:billing.manage')->group(function () {
+        Route::get('workspaces/{workspace}/members', [WorkspaceInvitationController::class, 'index'])->name('workspace.members.index');
+        Route::post('workspaces/{workspace}/members', [WorkspaceInvitationController::class, 'store'])->name('workspace.members.store');
+        Route::put('workspaces/{workspace}/members/{member}', [WorkspaceInvitationController::class, 'update'])->name('workspace.members.update');
+        Route::delete('workspaces/{workspace}/members/{member}', [WorkspaceInvitationController::class, 'destroy'])->name('workspace.members.destroy');
+        Route::post('workspaces/{workspace}/invitations/{invitation}/cancel', [WorkspaceInvitationController::class, 'cancelInvitation'])->name('workspace.invitations.cancel');
+        Route::post('workspaces/{workspace}/invitations/{invitation}/resend', [WorkspaceInvitationController::class, 'resendInvitation'])->name('workspace.invitations.resend');
+    });
+
+    // Appearance preferences (all authenticated users)
+    Route::post('appearance', [AppearanceController::class, 'store'])->name('appearance.store');
+    Route::get('appearance', [AppearanceController::class, 'show'])->name('appearance.show');
 });
 
 require __DIR__.'/settings.php';

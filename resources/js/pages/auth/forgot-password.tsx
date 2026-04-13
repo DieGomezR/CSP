@@ -27,10 +27,10 @@ export default function ForgotPassword({ status }: { status?: string }) {
 
             {status && <div className="mb-4 text-center text-sm font-medium text-green-600">{status}</div>}
 
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
                 <form onSubmit={submit}>
-                    <div className="grid gap-2">
-                        <Label htmlFor="email">Email address</Label>
+                    <div className="grid gap-2 sm:gap-3">
+                        <Label htmlFor="email" className="text-sm sm:text-base">Email address</Label>
                         <Input
                             id="email"
                             type="email"
@@ -40,15 +40,16 @@ export default function ForgotPassword({ status }: { status?: string }) {
                             autoFocus
                             onChange={(e) => setData('email', e.target.value)}
                             placeholder="email@example.com"
+                            className="h-12 sm:h-14"
                         />
 
                         <InputError message={errors.email} />
                     </div>
 
-                    <div className="my-6 flex items-center justify-start">
-                        <Button className="w-full" disabled={processing}>
+                    <div className="my-4 sm:my-6 flex items-center justify-start">
+                        <Button className="w-full min-h-11" disabled={processing}>
                             {processing && <LoaderCircle className="h-4 w-4 animate-spin" />}
-                            Email password reset link
+                            <span className="text-sm sm:text-base">Email password reset link</span>
                         </Button>
                     </div>
                 </form>

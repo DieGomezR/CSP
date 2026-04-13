@@ -11,6 +11,11 @@ declare global {
 }
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
+
+if (csrfToken) {
+    window.document.documentElement.dataset.csrf = csrfToken;
+}
 
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,

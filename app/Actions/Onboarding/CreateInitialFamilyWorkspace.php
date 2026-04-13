@@ -14,7 +14,8 @@ class CreateInitialFamilyWorkspace
      * @param  array{
      *     family_name:string,
      *     timezone:string,
-     *     children:array<int, array{name:string, birthdate?:string|null, color:string}>
+     *     children?:array<int, array{name:string, birthdate?:string|null, color:string}>,
+     *     notification_preferences?:array{email?:bool, sms?:bool}
      * }  $payload
      */
     public function handle(User $user, array $payload): Workspace
@@ -49,15 +50,15 @@ class CreateInitialFamilyWorkspace
                 'user_id' => $user->id,
                 'role' => 'owner',
                 'status' => 'active',
-                'notification_preferences' => [
+                'notification_preferences' => array_merge([
                     'email' => true,
                     'sms' => false,
-                ],
+                ], $payload['notification_preferences'] ?? []),
                 'joined_at' => now(),
                 'last_seen_at' => now(),
             ]);
 
-            foreach ($payload['children'] as $child) {
+            foreach (($payload['children'] ?? []) as $child) {
                 $workspace->children()->create([
                     'name' => $child['name'],
                     'color' => $child['color'],

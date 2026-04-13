@@ -26,10 +26,10 @@ export default function VerifyEmail({ status }: { status?: string }) {
                 </div>
             )}
 
-            <form onSubmit={submit} className="space-y-6 text-center">
-                <Button disabled={processing} variant="secondary">
+            <form onSubmit={submit} className="space-y-4 sm:space-y-6 text-center">
+                <Button disabled={processing} variant="secondary" className="min-h-11">
                     {processing && <LoaderCircle className="h-4 w-4 animate-spin" />}
-                    Resend verification email
+                    <span className="text-sm sm:text-base">Resend verification email</span>
                 </Button>
 
                 <TextLink href={route('logout')} method="post" className="mx-auto block text-sm">

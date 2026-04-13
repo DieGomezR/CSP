@@ -51,7 +51,15 @@ copy .env.example .env
 php artisan key:generate
 docker-compose up -d db
 php artisan migrate
-php artisan serve
+php artisan serve --no-reload
+npm run dev
+```
+
+If you already have the project installed and only want to boot it day to day:
+
+```bash
+docker-compose up -d db
+php artisan serve --no-reload
 npm run dev
 ```
 
@@ -71,8 +79,15 @@ Important local note:
 
 - the project now targets `PHP 8.3+`
 - Docker is only being used for PostgreSQL in local development
-- Laravel and Vite should run directly on the host with `php artisan serve` and `npm run dev`
-- if port `8000` is busy, make sure old Docker app containers or old `php artisan serve` processes are stopped first
+- Laravel and Vite should run directly on the host with `php artisan serve --no-reload` and `npm run dev`
+- if port `8000` is busy, stop old `php artisan serve` processes before starting a new one
+- if you want queued emails and notifications to process locally, run `php artisan queue:listen --tries=1` in a third terminal
+
+## Stripe Billing Setup
+
+The full Stripe test-mode setup for this project is documented in:
+
+- [`docs/stripe-test-mode-setup.md`](C:/Users/Desarrollador-Diego/Documents/csp/docs/stripe-test-mode-setup.md)
 
 If you prefer SQLite during local development, update `.env` accordingly before running migrations.
 

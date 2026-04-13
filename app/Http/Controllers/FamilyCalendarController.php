@@ -3,8 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Calendar\CreateCalendarEvent;
+use App\Actions\Calendar\GenerateCustodySchedule;
+use App\Enums\WorkspaceFeature;
 use App\Http\Requests\Calendar\StoreCalendarEventRequest;
+use App\Models\User;
 use App\Models\Workspace;
+use App\Support\Access\WorkspaceEntitlementResolver;
 use App\Support\Calendar\BuildCalendarFeedLinks;
 use App\Support\Calendar\BuildMonthCalendar;
 use App\Support\Workspaces\BuildRecentActivityFeed;
@@ -18,6 +22,11 @@ use Inertia\Response;
 
 class FamilyCalendarController extends Controller
 {
+    public function __construct(
+        private readonly WorkspaceEntitlementResolver $entitlementResolver,
+    ) {
+    }
+
     public function index(
         Request $request,
         BuildRecentActivityFeed $buildRecentActivityFeed
@@ -29,7 +38,7 @@ class FamilyCalendarController extends Controller
         }
 
         return Inertia::render('dashboard', [
-            'workspace' => $this->serializeWorkspace($workspace),
+            'workspace' => $this->serializeWorkspace($workspace, $request->user()),
             'workspaces' => $this->resolveFamilyWorkspaces($request),
             'recentActivity' => $buildRecentActivityFeed->handle($workspace),
         ]);
@@ -49,7 +58,7 @@ class FamilyCalendarController extends Controller
         $month = $this->resolveMonth($request->query('month'), $workspace->timezone);
 
         return Inertia::render('calendar', [
-            'workspace' => $this->serializeWorkspace($workspace),
+            'workspace' => $this->serializeWorkspace($workspace, $request->user()),
             'workspaces' => $this->resolveFamilyWorkspaces($request),
             'calendar' => $buildMonthCalendar->handle($workspace, $month),
             'syncFeeds' => $this->buildCalendarFeeds($workspace, $buildCalendarFeedLinks),
@@ -65,7 +74,7 @@ class FamilyCalendarController extends Controller
         }
 
         return Inertia::render('calendar/schedule-wizard', [
-            'workspace' => $this->serializeWorkspace($workspace),
+            'workspace' => $this->serializeWorkspace($workspace, $request->user()),
             'workspaces' => $this->resolveFamilyWorkspaces($request),
             'schoolCalendarOptions' => $this->schoolCalendarOptions(),
         ]);
@@ -84,14 +93,37 @@ class FamilyCalendarController extends Controller
         ])->with('status', 'Event added to the family calendar.');
     }
 
-    public function storeScheduleWizard(Request $request, Workspace $workspace): RedirectResponse
+    public function storeScheduleWizard(
+        Request $request,
+        Workspace $workspace,
+        GenerateCustodySchedule $generateCustodySchedule
+    ): RedirectResponse
     {
+        $user = $request->user();
+
+        // Defense in depth: validate entitlements even though middleware should have caught it
         abort_unless(
-            $request->user() !== null && $workspace->users()->whereKey($request->user()->id)->exists(),
+            $user !== null && $workspace->users()->whereKey($user->id)->exists(),
             403
         );
 
+        // Additional feature check for custody templates
+        if (! $this->entitlementResolver->hasFeature($user, $workspace, WorkspaceFeature::CustodyScheduleTemplates)) {
+            return to_route('billing', [
+                'plan' => 'complete',
+                'mode' => 'family',
+            ])->with('error', 'Custody schedule templates require a Complete plan. Upgrade to access this feature.');
+        }
+
         $validated = $request->validate([
+            'pattern' => ['required', Rule::in([
+                'alternating-weeks',
+                '2-2-3',
+                '3-4-4-3',
+                '5-2-2-5',
+                'every-other-weekend',
+                'every-other-weekend-midweek',
+            ])],
             'children_ids' => ['required', 'array', 'min:1'],
             'children_ids.*' => [
                 'integer',
@@ -117,6 +149,7 @@ class FamilyCalendarController extends Controller
         $settings = $workspace->settings ?? [];
         $settings['custody_schedule'] = [
             'completed_at' => now()->toIso8601String(),
+            'pattern' => $validated['pattern'],
             'children_ids' => array_values($validated['children_ids']),
             'starting_parent_member_id' => $validated['starting_parent_member_id'],
             'start_date' => $validated['start_date'],
@@ -128,6 +161,7 @@ class FamilyCalendarController extends Controller
         ];
 
         $workspace->forceFill(['settings' => $settings])->save();
+        $generateCustodySchedule->handle($workspace, $request->user(), $validated);
 
         return to_route('calendar', [
             'workspace' => $workspace->id,
@@ -147,10 +181,11 @@ class FamilyCalendarController extends Controller
     /**
      * @return array<string, mixed>
      */
-    protected function serializeWorkspace(Workspace $workspace): array
+    protected function serializeWorkspace(Workspace $workspace, ?User $user): array
     {
         $custodySchedule = array_merge([
             'completed_at' => null,
+            'pattern' => 'alternating-weeks',
             'children_ids' => [],
             'starting_parent_member_id' => null,
             'start_date' => null,
@@ -160,6 +195,7 @@ class FamilyCalendarController extends Controller
             'exchange_time' => '18:00',
             'school_calendar' => null,
         ], data_get($workspace->settings ?? [], 'custody_schedule', []));
+        $isOwner = $user !== null && $workspace->members->firstWhere('user_id', $user->id)?->role === 'owner';
 
         return [
             'id' => $workspace->id,
@@ -187,6 +223,17 @@ class FamilyCalendarController extends Controller
                     'joined_at' => ($member->joined_at ?? $member->created_at)?->toIso8601String(),
                 ])
                 ->values(),
+            'pending_invitations' => $isOwner
+                ? $workspace->invitations
+                    ->map(fn ($invitation) => [
+                        'id' => $invitation->id,
+                        'email' => $invitation->email,
+                        'role' => $invitation->role,
+                        'invited_at' => $invitation->created_at->toIso8601String(),
+                        'expires_at' => $invitation->expires_at?->toIso8601String(),
+                    ])
+                    ->values()
+                : [],
             'setup' => [
                 'custody_schedule_completed' => filled($custodySchedule['completed_at']),
                 'custody_schedule_completed_at' => $custodySchedule['completed_at'],
@@ -218,6 +265,13 @@ class FamilyCalendarController extends Controller
             ->withCount(['children', 'members', 'calendarEvents'])
             ->with([
                 'children:id,workspace_id,name,color,birthdate,created_at',
+                'invitations' => fn ($query) => $query
+                    ->where('status', 'pending')
+                    ->where(function ($query) {
+                        $query->whereNull('expires_at')
+                            ->orWhere('expires_at', '>', now());
+                    })
+                    ->latest(),
                 'members.user:id,name,email',
                 'owner:id,name,email',
                 'calendarEvents:id,workspace_id,creator_id,title,recurrence_type,created_at',

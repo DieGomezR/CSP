@@ -1,0 +1,14 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app/Actions/Auth
+        - app/Http/Controllers/Auth
+        - app/Http/Middleware/SecureHeaders.php
+        - app/Notifications
+        - app/Support/AuthRedirect.php
+        - routes
+        - database/seeders
+    level: 6
+    tmpDir: storage/phpstan

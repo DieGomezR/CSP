@@ -2,6 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
+use App\Support\Access\WorkspaceEntitlementResolver;
+use App\Support\Workspaces\CurrentWorkspaceResolver;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -37,6 +40,17 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
+        $workspaceAccess = null;
+
+        if ($request->user() instanceof User) {
+            $workspace = app(CurrentWorkspaceResolver::class)->resolve($request);
+
+            if ($workspace !== null) {
+                $workspaceAccess = app(WorkspaceEntitlementResolver::class)
+                    ->snapshot($request->user(), $workspace)
+                    ->toArray();
+            }
+        }
 
         return array_merge(parent::share($request), [
             'name' => config('app.name'),
@@ -44,9 +58,17 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            'appearance' => [
+                'theme' => data_get($request->user()?->preferences ?: [], 'appearance.theme', 'warm'),
+            ],
+            'security' => [
+                'csrf_token' => csrf_token(),
+            ],
             'flash' => [
                 'status' => $request->session()->get('status'),
+                'error' => $request->session()->get('error'),
             ],
+            'workspaceAccess' => $workspaceAccess,
         ]);
     }
 }
