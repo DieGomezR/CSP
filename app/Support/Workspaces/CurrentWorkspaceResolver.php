@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Workspaces;
 
 use App\Models\Expense;
+use App\Models\MediationSession;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\Request;
@@ -48,6 +49,18 @@ final class CurrentWorkspaceResolver
 
         if ($routeExpense instanceof Expense) {
             return $routeExpense->workspace_id;
+        }
+
+        $routeMediationSession = $request->route('mediationSession');
+
+        if ($routeMediationSession instanceof MediationSession) {
+            return $routeMediationSession->workspace_id;
+        }
+
+        if (is_numeric($routeMediationSession)) {
+            $session = MediationSession::query()->find((int) $routeMediationSession);
+
+            return $session?->workspace_id;
         }
 
         $workspaceId = $request->integer('workspace');

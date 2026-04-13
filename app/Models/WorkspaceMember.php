@@ -82,4 +82,20 @@ class WorkspaceMember extends Model
     {
         return $this->hasMany(MomentReaction::class);
     }
+
+    /**
+     * @return HasMany<MediationSession, self>
+     */
+    public function mediationSessions(): HasMany
+    {
+        return $this->hasMany(MediationSession::class, 'created_by_member_id');
+    }
+
+    /**
+     * @return HasMany<MediationMessage, self>
+     */
+    public function mediationMessages(): HasMany
+    {
+        return $this->hasMany(MediationMessage::class);
+    }
 }

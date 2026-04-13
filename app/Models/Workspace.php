@@ -96,4 +96,12 @@ class Workspace extends Model
     {
         return $this->hasMany(Moment::class);
     }
+
+    /**
+     * @return HasMany<MediationSession, self>
+     */
+    public function mediationSessions(): HasMany
+    {
+        return $this->hasMany(MediationSession::class);
+    }
 }

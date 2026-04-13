@@ -7,14 +7,17 @@ namespace App\Http\Controllers\Billing;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Support\Billing\BillingPlanCatalog;
+use App\Support\Billing\SubscriptionPlanChangeResolver;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 final class BillingPageController extends Controller
 {
-    public function __construct(private readonly BillingPlanCatalog $billingPlanCatalog)
-    {
+    public function __construct(
+        private readonly BillingPlanCatalog $billingPlanCatalog,
+        private readonly SubscriptionPlanChangeResolver $subscriptionPlanChangeResolver,
+    ) {
     }
 
     public function index(Request $request): Response
@@ -29,15 +32,34 @@ final class BillingPageController extends Controller
         $subscription = $user->subscription($subscriptionName);
         $currentPlan = $this->billingPlanCatalog->findByPriceId($subscription?->stripe_price);
 
-        $selectedMode = $request->string('mode')->toString();
-        $selectedPlan = $request->string('plan')->toString();
+        $requestedMode = $request->string('mode')->toString();
+        $requestedPlan = $request->string('plan')->toString();
+
+        $selectedMode = in_array($requestedMode, ['parent', 'family'], true)
+            ? $requestedMode
+            : ($currentPlan['billing_mode'] ?? 'parent');
+
+        $selectedPlan = in_array($requestedPlan, ['essential', 'plus', 'complete'], true)
+            ? $requestedPlan
+            : ($currentPlan['plan'] ?? 'plus');
+
+        $planActions = [];
+        foreach (['parent', 'family'] as $billingMode) {
+            foreach (['essential', 'plus', 'complete'] as $planKey) {
+                $transition = $this->subscriptionPlanChangeResolver->resolve($currentPlan, $planKey, $billingMode);
+                $planActions[$billingMode][$planKey] = [
+                    'kind' => $transition['kind'],
+                ];
+            }
+        }
 
         return Inertia::render('billing/index', [
             'trialDays' => $this->billingPlanCatalog->getTrialDays(),
             'billingModes' => $this->billingPlanCatalog->getBillingModesForUi(),
             'plans' => $this->billingPlanCatalog->getPlansForUi(),
-            'selectedMode' => in_array($selectedMode, ['parent', 'family'], true) ? $selectedMode : 'parent',
-            'selectedPlan' => in_array($selectedPlan, ['essential', 'plus', 'complete'], true) ? $selectedPlan : 'plus',
+            'selectedMode' => $selectedMode,
+            'selectedPlan' => $selectedPlan,
+            'planActions' => $planActions,
             'subscription' => [
                 'exists' => $subscription !== null,
                 'active' => $subscription !== null && ! $subscription->ended(),

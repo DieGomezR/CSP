@@ -107,7 +107,7 @@ final class BillingPlanCatalog
      *     featured:bool,
      *     badge:?string,
      *     features:array<int, string>,
-     *     prices:array<string, array{display:string,configured:bool}>
+     *     prices:array<string, array{amount:int,display:string,configured:bool}>
      * }>
      */
     public function getPlansForUi(): array
@@ -124,6 +124,7 @@ final class BillingPlanCatalog
                     }
 
                     $prices[$billingMode] = [
+                        'amount' => (int) $price['amount'],
                         'display' => (string) $price['display'],
                         'configured' => filled($price['stripe_price'] ?? null),
                     ];
@@ -133,7 +134,7 @@ final class BillingPlanCatalog
                     'key' => $key,
                     'label' => $plan['label'],
                     'subtitle' => $plan['subtitle'],
-                    'featured' => (bool) ($plan['featured'] ?? false),
+                    'featured' => (bool) $plan['featured'],
                     'badge' => $plan['badge'] ?? null,
                     'features' => $plan['features'],
                     'prices' => $prices,
@@ -178,10 +179,10 @@ final class BillingPlanCatalog
             'billing_mode_label' => $billingModeConfig['label'],
             'label' => $planConfig['label'],
             'subtitle' => $planConfig['subtitle'],
-            'featured' => (bool) ($planConfig['featured'] ?? false),
+            'featured' => (bool) $planConfig['featured'],
             'badge' => $planConfig['badge'] ?? null,
             'features' => $planConfig['features'],
-            'entitlements' => $planConfig['entitlements'] ?? [],
+            'entitlements' => $planConfig['entitlements'],
             'price' => [
                 'amount' => (int) $priceConfig['amount'],
                 'display' => (string) $priceConfig['display'],
@@ -207,7 +208,8 @@ final class BillingPlanCatalog
      *     billing_mode:string,
      *     label:string,
      *     billing_mode_label:string,
-     *     price_display:string
+     *     price_display:string,
+     *     price_amount:int
      * }|null
      */
     public function findByPriceId(?string $priceId): ?array
@@ -230,6 +232,7 @@ final class BillingPlanCatalog
                     'label' => (string) $plan['label'],
                     'billing_mode_label' => $billingModeConfig['label'],
                     'price_display' => (string) Arr::get($plan, "prices.{$billingMode}.display"),
+                    'price_amount' => (int) Arr::get($plan, "prices.{$billingMode}.amount"),
                 ];
             }
         }
@@ -245,7 +248,7 @@ final class BillingPlanCatalog
             return false;
         }
 
-        return in_array($feature, $planConfig['entitlements'] ?? [], true);
+        return in_array($feature, $planConfig['entitlements'], true);
     }
 
     public function getMinimumPlanForFeature(string $feature): ?string

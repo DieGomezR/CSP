@@ -20,7 +20,7 @@ interface BillingPlan {
     featured: boolean;
     badge?: string | null;
     features: string[];
-    prices: Record<BillingMode, { display: string; configured: boolean }>;
+    prices: Record<BillingMode, { amount: number; display: string; configured: boolean }>;
 }
 
 interface BillingPageProps {
@@ -29,6 +29,7 @@ interface BillingPageProps {
     plans: BillingPlan[];
     selectedMode: BillingMode;
     selectedPlan: PlanKey;
+    planActions: Record<BillingMode, Record<PlanKey, { kind: 'new' | 'current' | 'upgrade' | 'downgrade' }>>;
     subscription: {
         exists: boolean;
         active: boolean;
@@ -114,6 +115,7 @@ export default function BillingIndex({
     plans,
     selectedMode,
     selectedPlan,
+    planActions,
     subscription,
     stripe,
 }: BillingPageProps) {
@@ -123,6 +125,7 @@ export default function BillingIndex({
     const [portalLoading, setPortalLoading] = useState(false);
     const [portalError, setPortalError] = useState<string | null>(null);
     const [checkoutError, setCheckoutError] = useState<string | null>(null);
+    const [localNotice, setLocalNotice] = useState<string | null>(null);
     const [processing, setProcessing] = useState(false);
 
     const currentModeLabel = useMemo(
@@ -138,6 +141,7 @@ export default function BillingIndex({
         setBillingMode(mode);
         setActivePlan(planKey);
         setCheckoutError(null);
+        setLocalNotice(null);
         setProcessing(true);
 
         try {
@@ -158,6 +162,7 @@ export default function BillingIndex({
             const payload = (await response.json()) as {
                 url?: string;
                 message?: string;
+                internal?: boolean;
                 errors?: Record<string, string[]>;
             };
 
@@ -165,6 +170,10 @@ export default function BillingIndex({
                 const validationMessage = payload.errors ? Object.values(payload.errors).flat()[0] : null;
 
                 throw new Error(validationMessage ?? payload.message ?? 'Unable to start Stripe Checkout.');
+            }
+
+            if (payload.message) {
+                setLocalNotice(payload.message);
             }
 
             window.location.href = payload.url;
@@ -214,7 +223,7 @@ export default function BillingIndex({
                     <div>
                         <h1 className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl md:text-[2.8rem]">Billing</h1>
                         <p className="mt-2 text-base text-slate-400 sm:text-lg">
-                            Keep billing inside KidSchedule, launch Stripe Checkout for subscriptions, and use the portal only for technical account management.
+                            New subscriptions and upgrades happen here. Lower-cost or reduced-coverage changes are routed through Stripe so they can be scheduled safely at renewal.
                         </p>
                     </div>
 
@@ -247,6 +256,12 @@ export default function BillingIndex({
                 {checkoutError && (
                     <div className="mx-4 mt-4 rounded-[1.35rem] border border-[#f4d6d6] bg-white px-4 py-4 text-sm font-semibold text-[#c35b5b] shadow-sm sm:mx-6 sm:text-[1.05rem]">
                         {checkoutError}
+                    </div>
+                )}
+
+                {localNotice && (
+                    <div className="mx-4 mt-4 rounded-[1.35rem] border border-[#caece6] bg-white px-4 py-4 text-sm font-semibold text-[#3da999] shadow-sm sm:mx-6 sm:text-[1.05rem]">
+                        {localNotice}
                     </div>
                 )}
 
@@ -297,6 +312,24 @@ export default function BillingIndex({
                             {plans.map((plan) => {
                                 const price = plan.prices[billingMode];
                                 const isSelected = activePlan === plan.key;
+                                const planAction = planActions[billingMode][plan.key];
+                                const isCurrentPlan = planAction.kind === 'current';
+                                const opensPortal = planAction.kind === 'downgrade';
+                                const canStartAction = stripe.configured && price.configured && !processing && (!opensPortal || stripe.portalAvailable);
+                                const buttonLabel = subscription.active
+                                    ? isCurrentPlan
+                                        ? 'Current plan'
+                                        : planAction.kind === 'upgrade'
+                                          ? 'Upgrade now'
+                                          : 'Change in Stripe'
+                                    : `Start ${trialDays}-Day Trial`;
+                                const helperText = subscription.active
+                                    ? isCurrentPlan
+                                        ? 'This is your active selection.'
+                                        : planAction.kind === 'upgrade'
+                                          ? 'Applies immediately. Stripe may generate a prorated charge right away.'
+                                          : 'Lower-cost or reduced-coverage changes are managed in Stripe and should take effect at renewal.'
+                                    : null;
 
                                 return (
                                     <article
@@ -338,9 +371,19 @@ export default function BillingIndex({
 
                                         <Button
                                             type="button"
-                                            disabled={!stripe.configured || !price.configured || processing || subscription.active}
+                                            disabled={!canStartAction || isCurrentPlan}
                                             onClick={(event) => {
                                                 event.stopPropagation();
+
+                                                if (isCurrentPlan) {
+                                                    return;
+                                                }
+
+                                                if (opensPortal) {
+                                                    void openPortal();
+                                                    return;
+                                                }
+
                                                 void startCheckout(billingMode, plan.key);
                                             }}
                                             className={`mt-8 inline-flex min-h-[44px] w-full items-center justify-center rounded-2xl px-4 text-sm font-black sm:mt-10 sm:h-14 sm:px-6 sm:text-base ${
@@ -348,8 +391,10 @@ export default function BillingIndex({
                                             }`}
                                         >
                                             {activePlan === plan.key && processing
-                                                ? 'Redirecting...'
-                                                : `Start ${trialDays}-Day Trial`}
+                                                ? planAction.kind === 'upgrade'
+                                                    ? 'Applying...'
+                                                    : 'Redirecting...'
+                                                : buttonLabel}
                                         </Button>
 
                                         {!price.configured && (
@@ -360,6 +405,12 @@ export default function BillingIndex({
 
                                         {isSelected && (
                                             <p className={`mt-3 text-xs font-black sm:mt-4 sm:text-sm ${plan.featured ? 'text-white/90' : 'text-[#3da999]'}`}>Selected plan</p>
+                                        )}
+
+                                        {helperText && (
+                                            <p className={`mt-3 text-xs font-semibold leading-6 sm:mt-4 sm:text-sm ${plan.featured ? 'text-white/90' : 'text-slate-500'}`}>
+                                                {helperText}
+                                            </p>
                                         )}
                                     </article>
                                 );
@@ -372,7 +423,7 @@ export default function BillingIndex({
                                 <span className="font-black text-slate-700">{stripe.webhookPath}</span>
                             </p>
                             <p className="mt-2">
-                                This page remains the primary billing experience. The Stripe portal is only used for technical subscription management.
+                                Upgrades are handled in-app. Downgrades and lower-cost coverage changes are delegated to Stripe to avoid mid-cycle billing ambiguity.
                             </p>
                         </div>
                     </section>

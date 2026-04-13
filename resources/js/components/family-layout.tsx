@@ -2,7 +2,7 @@ import { type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { Bell, CalendarDays, Lock, LogOut, Mail, Phone } from 'lucide-react';
 
-type ActiveTab = 'dashboard' | 'calendar' | 'billing' | 'expenses' | 'moments';
+type ActiveTab = 'dashboard' | 'calendar' | 'billing' | 'expenses' | 'moments' | 'mediation';
 
 const navigation = [
     { key: 'dashboard', label: 'Dashboard', href: '/dashboard', requiresAbility: null, requiresFeature: null },
@@ -11,7 +11,7 @@ const navigation = [
     { key: 'expenses', label: 'Expenses', href: '/expenses', requiresAbility: 'expenses.view', requiresFeature: 'expense_tracking' },
     { key: 'messages', label: 'Messages', href: '#', requiresAbility: null, requiresFeature: 'secure_messaging' },
     { key: 'moments', label: 'Moments', href: '/moments', requiresAbility: null, requiresFeature: null },
-    { key: 'mediation', label: 'Mediation', href: '#', requiresAbility: null, requiresFeature: null },
+    { key: 'mediation', label: 'Mediation', href: '/mediation', requiresAbility: null, requiresFeature: 'ai_tone_analysis' },
     { key: 'requests', label: 'Requests', href: '#', requiresAbility: null, requiresFeature: 'change_request_workflow' },
 ] as const;
 
@@ -30,7 +30,9 @@ export default function FamilyLayout({
     const billingHref = route('billing');
     const expensesHref = workspaceId ? route('expenses.index', { workspace: workspaceId }) : route('expenses.index');
     const momentsHref = workspaceId ? route('moments.index', { workspace: workspaceId }) : route('moments.index');
+    const mediationHref = workspaceId ? route('mediation.index', { workspace: workspaceId }) : route('mediation.index');
     const canUseExpenses = (workspaceAccess?.abilities?.['expenses.view'] ?? false) && (workspaceAccess?.features?.['expense_tracking'] ?? false);
+    const canUseMediation = workspaceAccess?.features?.['ai_tone_analysis'] ?? false;
 
     return (
         <div className="min-h-screen bg-[#eef8f6] text-slate-900">
@@ -57,12 +59,27 @@ export default function FamilyLayout({
                                         ? expensesHref
                                       : item.key === 'moments'
                                         ? momentsHref
+                                      : item.key === 'mediation'
+                                        ? mediationHref
                                       : item.href;
 
                             // Check if this item is enabled based on abilities and features
                             const hasAbility = item.requiresAbility ? (workspaceAccess?.abilities?.[item.requiresAbility] ?? false) : true;
                             const hasFeature = item.requiresFeature ? (workspaceAccess?.features?.[item.requiresFeature] ?? false) : true;
                             const isEnabled = hasAbility && hasFeature && actualHref !== '#';
+                            const isComingSoon = hasAbility && hasFeature && actualHref === '#';
+
+                            if (isComingSoon) {
+                                return (
+                                    <span
+                                        key={item.key}
+                                        className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-[#d7d8ef] bg-[#f7f7fd] px-3 py-2 text-sm font-bold text-[#7c80a4]"
+                                    >
+                                        {item.label}
+                                        <span className="rounded-full bg-white px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-[#8f8bff]">Soon</span>
+                                    </span>
+                                );
+                            }
 
                             // If disabled, show with lock icon
                             if (!isEnabled) {
@@ -132,6 +149,12 @@ export default function FamilyLayout({
                                 <span>Messages</span>
                                 <Link href={momentsHref} className="transition hover:text-white">
                                     Moments
+                                </Link>
+                                <Link
+                                    href={canUseMediation ? mediationHref : route('billing', { plan: 'complete', mode: 'family' })}
+                                    className="transition hover:text-white"
+                                >
+                                    Mediation
                                 </Link>
                                 <Link
                                     href={canUseExpenses ? expensesHref : route('billing', { plan: 'plus', mode: 'family' })}

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AppearanceController;
+use App\Http\Controllers\Admin\MediationEscalationController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\CalendarFeedSubscriptionController;
 use App\Http\Controllers\ChildController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\Billing\BillingSuccessController;
 use App\Http\Controllers\FamilyCalendarController;
 use App\Http\Controllers\MomentController;
 use App\Http\Controllers\MomentReactionController;
+use App\Http\Controllers\MediationController;
 use App\Http\Controllers\Onboarding\FamilyOnboardingController;
 use App\Http\Controllers\WorkspaceCalendarFeedController;
 use App\Http\Controllers\WorkspaceInvitationController;
@@ -41,6 +43,10 @@ Route::get('calendar-feeds/{token}/family.ics', [CalendarFeedSubscriptionControl
     ->name('calendar-feeds.show');
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::middleware('can:admin.access')->group(function () {
+        Route::get('admin/mediation/escalations', [MediationEscalationController::class, 'index'])->name('admin.mediation.escalations');
+    });
+
     Route::get('onboarding/family', [FamilyOnboardingController::class, 'create'])->name('onboarding.family.create');
     Route::post('onboarding/family', [FamilyOnboardingController::class, 'store'])->name('onboarding.family.store');
 
@@ -59,6 +65,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('moments/{moment}', [MomentController::class, 'destroy'])->name('moments.destroy');
     Route::get('moments/{moment}/image', [MomentController::class, 'image'])->name('moments.image');
     Route::post('moments/{moment}/reactions', [MomentReactionController::class, 'store'])->name('moments.reactions.store');
+    Route::middleware('workspace.feature:ai_tone_analysis')->group(function () {
+        Route::get('mediation', [MediationController::class, 'index'])->name('mediation.index');
+        Route::post('mediation', [MediationController::class, 'store'])->name('mediation.store');
+        Route::get('mediation/session/{mediationSession}', [MediationController::class, 'show'])->name('mediation.show');
+        Route::post('mediation/session/{mediationSession}/messages', [MediationController::class, 'send'])->name('mediation.messages.store');
+        Route::post('mediation/session/{mediationSession}/help', [MediationController::class, 'askAiForHelp'])->name('mediation.help');
+        Route::post('mediation/session/{mediationSession}/resolve', [MediationController::class, 'resolve'])->name('mediation.resolve');
+        Route::post('mediation/session/{mediationSession}/cancel', [MediationController::class, 'cancel'])->name('mediation.cancel');
+    });
+    Route::middleware('workspace.feature:court_ready_exports')->group(function () {
+        Route::get('mediation/court-report', [MediationController::class, 'report'])->name('mediation.report');
+        Route::get('mediation/court-report/print', [MediationController::class, 'printReport'])->name('mediation.report.print');
+    });
     Route::middleware(['workspace.ability:expenses.view', 'workspace.feature:expense_tracking'])->group(function () {
         Route::get('expenses', [ExpenseController::class, 'index'])->name('expenses.index');
         Route::get('expenses/create', [ExpenseController::class, 'create'])->name('expenses.create');

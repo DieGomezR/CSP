@@ -3,10 +3,16 @@
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceInvitation;
+use App\Models\WorkspaceMember;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function () {
+    $this->seed(RolesAndPermissionsSeeder::class);
+});
 
 test('guests are redirected to the login page', function () {
     $this->get('/dashboard')->assertRedirect('/login');
@@ -63,4 +69,35 @@ test('dashboard includes saved appearance and pending invitations for owners', f
             ->component('dashboard')
             ->where('appearance.theme', 'minimal')
             ->has('workspace.pending_invitations', 1));
+});
+
+test('dashboard hides owner management actions from non-owner members', function () {
+    $owner = User::factory()->create([
+        'email_verified_at' => now(),
+    ]);
+    $owner->assignRole('family-owner');
+
+    $member = User::factory()->create([
+        'email_verified_at' => now(),
+    ]);
+    $member->assignRole('family-member');
+
+    $workspace = Workspace::factory()->create([
+        'owner_id' => $owner->id,
+    ]);
+
+    WorkspaceMember::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $member->id,
+        'role' => 'member',
+    ]);
+
+    $response = $this->actingAs($member)->get(route('dashboard', ['workspace' => $workspace->id]));
+
+    $response
+        ->assertOk()
+        ->assertDontSee('Manage workspace')
+        ->assertDontSee('Create Invitation')
+        ->assertDontSee('Remove Member')
+        ->assertDontSee('Delete Child');
 });

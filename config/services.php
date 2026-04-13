@@ -32,6 +32,7 @@ return [
         'key' => env('ANTHROPIC_API_KEY'),
         'base_url' => env('ANTHROPIC_BASE_URL', 'https://api.anthropic.com'),
         'model' => env('ANTHROPIC_MODEL'),
+        'version' => env('ANTHROPIC_VERSION', '2023-06-01'),
     ],
 
     'slack' => [

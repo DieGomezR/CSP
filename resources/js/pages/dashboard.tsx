@@ -124,6 +124,7 @@ function QuickActionCard({
     title,
     icon: Icon,
     upgrade = false,
+    restricted = false,
     theme = 'warm',
 }: {
     href?: string;
@@ -131,6 +132,7 @@ function QuickActionCard({
     title: string;
     icon: typeof CalendarDays;
     upgrade?: boolean;
+    restricted?: boolean;
     theme?: DashboardTheme;
 }) {
     const radiusMap = {
@@ -142,14 +144,30 @@ function QuickActionCard({
     const baseClasses = `group flex min-h-[112px] w-full flex-col items-center justify-center ${radiusMap[theme]} px-4 py-6 text-center transition sm:min-h-[160px] sm:px-6 sm:py-8`;
     const cardClasses = upgrade
         ? `${baseClasses} border-2 border-dashed border-[#ffb21a] bg-[#fff8e6] hover:border-[#e6a016] hover:bg-[#fff4d6]`
-        : `${baseClasses} border border-[#dceceb] bg-[#eaf8f7] hover:border-[#8ed7ca] hover:bg-[#effaf8]`;
+        : restricted
+          ? `${baseClasses} border border-dashed border-[#d5dbe7] bg-[#f7f9fc] text-slate-500`
+          : `${baseClasses} border border-[#dceceb] bg-[#eaf8f7] hover:border-[#8ed7ca] hover:bg-[#effaf8]`;
 
     const content = (
         <>
-            <div className={`rounded-full p-3 shadow-sm transition group-hover:scale-105 ${upgrade ? 'bg-[#ffb21a]/20 text-[#b07c1a]' : 'bg-white/80 text-[#9b8fd0]'}`}>
+            <div
+                className={`rounded-full p-3 shadow-sm transition group-hover:scale-105 ${
+                    upgrade
+                        ? 'bg-[#ffb21a]/20 text-[#b07c1a]'
+                        : restricted
+                          ? 'bg-white text-slate-400'
+                          : 'bg-white/80 text-[#9b8fd0]'
+                }`}
+            >
                 <Icon className="size-6" />
             </div>
-            <p className={`mt-3 text-xl font-black tracking-tight sm:mt-5 sm:text-[1.85rem] ${upgrade ? 'text-[#b07c1a]' : 'text-slate-900'}`}>{title}</p>
+            <p
+                className={`mt-3 text-xl font-black tracking-tight sm:mt-5 sm:text-[1.85rem] ${
+                    upgrade ? 'text-[#b07c1a]' : restricted ? 'text-slate-500' : 'text-slate-900'
+                }`}
+            >
+                {title}
+            </p>
         </>
     );
 
@@ -308,6 +326,7 @@ export default function Dashboard({ workspace, recentActivity }: DashboardProps)
     const workspaceTitle = workspace.name.replace(/family$/i, '').trim() || workspace.name;
     const custodyWizardHref = route('calendar.schedule-wizard', { workspace: workspace.id });
     const calendarHref = route('calendar', { workspace: workspace.id });
+    const canManageChildren = workspaceAccess?.abilities?.['custody.manage'] ?? false;
     const canManageCustody = (workspaceAccess?.abilities?.['custody.manage'] ?? false) && (workspaceAccess?.features?.['custody_schedule_templates'] ?? false);
     const canManageBilling = workspaceAccess?.abilities?.['billing.manage'] ?? false;
     const isOwner = workspaceAccess?.is_owner ?? false;
@@ -362,20 +381,30 @@ export default function Dashboard({ workspace, recentActivity }: DashboardProps)
             icon: Settings2,
             upgrade: !canManageCustody,
         },
-        { title: 'Add Child', onClick: () => setIsAddChildOpen(true), icon: Sparkles },
+        {
+            title: 'Add Child',
+            onClick: canManageChildren ? () => setIsAddChildOpen(true) : undefined,
+            icon: Sparkles,
+            restricted: !canManageChildren,
+        },
         {
             title: 'Add Parent',
             href: canManageMembers ? '#family-members' : undefined,
             onClick: canManageMembers ? () => setIsAddMemberOpen(true) : undefined,
             icon: UserPlus,
-            upgrade: !canManageMembers,
+            restricted: !canManageMembers,
         },
-        { title: 'Caregivers', href: '#family-members', icon: Users },
+        {
+            title: 'Caregivers',
+            href: canManageMembers ? '#family-members' : undefined,
+            icon: Users,
+            restricted: !canManageMembers,
+        },
         {
             title: 'Billing',
             href: canManageBilling ? route('billing') : undefined,
             icon: CreditCard,
-            upgrade: !canManageBilling,
+            restricted: !canManageBilling,
         },
         { title: 'Log Transfer', href: '#recent-activity', icon: ClipboardList },
     ];
@@ -618,6 +647,7 @@ export default function Dashboard({ workspace, recentActivity }: DashboardProps)
                             title={action.title}
                             icon={action.icon}
                             upgrade={action.upgrade}
+                            restricted={action.restricted}
                             theme={activeTheme}
                         />
                     ))}
@@ -629,13 +659,15 @@ export default function Dashboard({ workspace, recentActivity }: DashboardProps)
                         title="Children"
                         icon={Sparkles}
                         action={
-                            <button
-                                type="button"
-                                onClick={() => setIsAddChildOpen(true)}
-                                className="min-h-[44px] min-w-[44px] rounded-2xl bg-[#67d2c3] px-4 py-2 text-sm font-black text-white shadow-sm sm:px-6 sm:py-3 sm:text-[1.1rem]"
-                            >
-                                + Add
-                            </button>
+                            canManageChildren && (
+                                <button
+                                    type="button"
+                                    onClick={() => setIsAddChildOpen(true)}
+                                    className="min-h-[44px] min-w-[44px] rounded-2xl bg-[#67d2c3] px-4 py-2 text-sm font-black text-white shadow-sm sm:px-6 sm:py-3 sm:text-[1.1rem]"
+                                >
+                                    + Add
+                                </button>
+                            )
                         }
                         theme={activeTheme}
                     >
@@ -660,7 +692,7 @@ export default function Dashboard({ workspace, recentActivity }: DashboardProps)
                                                 </p>
                                             </div>
                                         </div>
-                                        {isOwner && (
+                                        {canManageChildren && (
                                             <div className="flex items-center gap-2 sm:gap-3">
                                                 <button
                                                     type="button"
