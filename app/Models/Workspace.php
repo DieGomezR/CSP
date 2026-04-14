@@ -104,4 +104,20 @@ class Workspace extends Model
     {
         return $this->hasMany(MediationSession::class);
     }
+
+    /**
+     * @return HasMany<WorkspaceMessage, self>
+     */
+    public function messages(): HasMany
+    {
+        return $this->hasMany(WorkspaceMessage::class);
+    }
+
+    /**
+     * @return HasMany<WorkspaceMessageThread, self>
+     */
+    public function messageThreads(): HasMany
+    {
+        return $this->hasMany(WorkspaceMessageThread::class);
+    }
 }

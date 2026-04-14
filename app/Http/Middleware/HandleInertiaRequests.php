@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\User;
 use App\Support\Access\WorkspaceEntitlementResolver;
+use App\Support\Notifications\NotificationFeedBuilder;
 use App\Support\Workspaces\CurrentWorkspaceResolver;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
@@ -41,6 +42,10 @@ class HandleInertiaRequests extends Middleware
     {
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
         $workspaceAccess = null;
+        $notificationFeed = [
+            'unread_count' => 0,
+            'items' => [],
+        ];
 
         if ($request->user() instanceof User) {
             $workspace = app(CurrentWorkspaceResolver::class)->resolve($request);
@@ -50,6 +55,8 @@ class HandleInertiaRequests extends Middleware
                     ->snapshot($request->user(), $workspace)
                     ->toArray();
             }
+
+            $notificationFeed = app(NotificationFeedBuilder::class)->buildForUser($request->user());
         }
 
         return array_merge(parent::share($request), [
@@ -68,6 +75,7 @@ class HandleInertiaRequests extends Middleware
                 'status' => $request->session()->get('status'),
                 'error' => $request->session()->get('error'),
             ],
+            'notifications' => $notificationFeed,
             'workspaceAccess' => $workspaceAccess,
         ]);
     }

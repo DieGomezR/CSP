@@ -10,6 +10,7 @@ use App\Models\Workspace;
 use App\Models\WorkspaceInvitation;
 use App\Notifications\WelcomeToKidScheduleNotification;
 use App\Notifications\WorkspaceInvitationNotification;
+use App\Support\Auth\EnsureApplicationRoles;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
@@ -19,6 +20,7 @@ class RegisterFamilyAccount
 {
     public function __construct(
         private readonly AcceptWorkspaceInvitation $acceptWorkspaceInvitation,
+        private readonly EnsureApplicationRoles $ensureApplicationRoles,
     ) {
     }
 
@@ -61,6 +63,7 @@ class RegisterFamilyAccount
                     ],
                 ]);
 
+                $this->ensureApplicationRoles->handle();
                 $user->assignRole('family-owner');
                 $this->sendOptionalCoParentInvitation($workspace->fresh('owner') ?? $workspace->load('owner'), $user, $payload['coparent_email'] ?? null);
             }

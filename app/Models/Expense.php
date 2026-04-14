@@ -9,6 +9,31 @@ use Database\Factories\ExpenseFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
+
+/**
+ * @property int $id
+ * @property int $workspace_id
+ * @property int|null $child_id
+ * @property int $created_by_member_id
+ * @property int $shared_with_member_id
+ * @property int|null $accepted_by_member_id
+ * @property string $currency
+ * @property int $amount_cents
+ * @property float $amount
+ * @property string $category
+ * @property Carbon|null $expense_date
+ * @property string|null $description
+ * @property int $other_party_share_percentage
+ * @property ExpenseStatus $status
+ * @property string|null $receipt_path
+ * @property Carbon|null $accepted_at
+ * @property-read Workspace $workspace
+ * @property-read Child|null $child
+ * @property-read WorkspaceMember $createdByMember
+ * @property-read WorkspaceMember $sharedWithMember
+ * @property-read WorkspaceMember|null $acceptedByMember
+ */
 
 class Expense extends Model
 {

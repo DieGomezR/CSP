@@ -11,6 +11,7 @@ use App\Models\MediationSession;
 use App\Support\Mediation\AnthropicMediationClient;
 use App\Support\Mediation\MediationCommunicationAnalyzer;
 use App\Support\Mediation\MediationUsageGuard;
+use App\Support\Realtime\WorkspaceRealtimeDispatcher;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -36,6 +37,7 @@ final class GenerateMediationAssistantReply implements ShouldQueue
         AnthropicMediationClient $anthropicMediationClient,
         MediationCommunicationAnalyzer $analyzer,
         MediationUsageGuard $usageGuard,
+        WorkspaceRealtimeDispatcher $workspaceRealtimeDispatcher,
     ): void {
         $session = MediationSession::query()
             ->with(['messages.workspaceMember.user:id,name,email'])
@@ -77,5 +79,16 @@ final class GenerateMediationAssistantReply implements ShouldQueue
                 'last_message_at' => now(),
             ])->save();
         });
+
+        $session->refresh();
+
+        $workspaceRealtimeDispatcher->dispatch(
+            $workspaceRealtimeDispatcher->workspaceUsers($session->workspace),
+            'mediation',
+            'assistant_reply_ready',
+            $session->workspace_id,
+            null,
+            ['mediation_session_id' => $session->id],
+        );
     }
 }

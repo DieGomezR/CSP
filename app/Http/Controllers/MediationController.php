@@ -22,6 +22,8 @@ use App\Support\Mediation\MediationAccess;
 use App\Support\Mediation\MediationCommunicationAnalyzer;
 use App\Support\Mediation\MediationPdfBuilder;
 use App\Support\Mediation\MediationReportBuilder;
+use App\Support\Notifications\WorkspaceNotificationDispatcher;
+use App\Support\Realtime\WorkspaceRealtimeDispatcher;
 use App\Support\Workspaces\CurrentWorkspaceResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
@@ -37,6 +39,8 @@ final class MediationController extends Controller
         private readonly MediationCommunicationAnalyzer $analyzer,
         private readonly MediationPdfBuilder $pdfBuilder,
         private readonly MediationReportBuilder $reportBuilder,
+        private readonly WorkspaceNotificationDispatcher $workspaceNotificationDispatcher,
+        private readonly WorkspaceRealtimeDispatcher $workspaceRealtimeDispatcher,
         private readonly StartMediationSession $startMediationSession,
         private readonly SendMediationMessage $sendMediationMessage,
         private readonly ResolveMediationSession $resolveMediationSession,
@@ -88,6 +92,24 @@ final class MediationController extends Controller
         $viewer = $this->mediationAccess->resolveWorkspaceMember($workspace, $request->user());
         $session = $this->startMediationSession->handle($workspace, $viewer, (string) $request->validated('subject'));
 
+        $this->workspaceNotificationDispatcher->dispatch(
+            $this->workspaceNotificationDispatcher->otherWorkspaceUsers($workspace, $viewer),
+            'mediation_started',
+            'New mediation session',
+            sprintf('%s started a mediation session: %s.', $viewer->user->name, $session->subject),
+            route('mediation.show', ['mediationSession' => $session->id, 'workspace' => $workspace->id]),
+            $workspace,
+        );
+
+        $this->workspaceRealtimeDispatcher->dispatch(
+            $this->workspaceRealtimeDispatcher->otherWorkspaceUsers($workspace, $viewer),
+            'mediation',
+            'session_started',
+            $workspace->id,
+            $viewer->user_id,
+            ['mediation_session_id' => $session->id],
+        );
+
         return to_route('mediation.show', ['mediationSession' => $session->id, 'workspace' => $workspace->id])
             ->with('status', 'Mediation session started.');
     }
@@ -120,6 +142,15 @@ final class MediationController extends Controller
             (string) $request->validated('client_request_id'),
         );
 
+        $this->workspaceRealtimeDispatcher->dispatch(
+            $this->workspaceRealtimeDispatcher->otherWorkspaceUsers($workspace, $viewer),
+            'mediation',
+            'session_updated',
+            $workspace->id,
+            $viewer->user_id,
+            ['mediation_session_id' => $mediationSession->id],
+        );
+
         return back()->with('status', (bool) config('mediation.ai.queue_replies', false)
             ? 'Message sent. The AI reply is being prepared.'
             : 'Message sent.');
@@ -139,6 +170,15 @@ final class MediationController extends Controller
             true,
         );
 
+        $this->workspaceRealtimeDispatcher->dispatch(
+            $this->workspaceRealtimeDispatcher->otherWorkspaceUsers($workspace, $viewer),
+            'mediation',
+            'session_updated',
+            $workspace->id,
+            $viewer->user_id,
+            ['mediation_session_id' => $mediationSession->id],
+        );
+
         return back()->with('status', (bool) config('mediation.ai.queue_replies', false)
             ? 'A different AI suggestion was requested and is being prepared.'
             : 'A different AI suggestion was added to the conversation.');
@@ -152,6 +192,24 @@ final class MediationController extends Controller
 
         $this->resolveMediationSession->handle($mediationSession, (string) $request->validated('reason'));
 
+        $this->workspaceNotificationDispatcher->dispatch(
+            $this->workspaceNotificationDispatcher->otherWorkspaceUsers($workspace, $viewer),
+            'mediation_resolved',
+            'Mediation session resolved',
+            sprintf('%s resolved "%s".', $viewer->user->name, $mediationSession->subject),
+            route('mediation.show', ['mediationSession' => $mediationSession->id, 'workspace' => $workspace->id]),
+            $workspace,
+        );
+
+        $this->workspaceRealtimeDispatcher->dispatch(
+            $this->workspaceRealtimeDispatcher->otherWorkspaceUsers($workspace, $viewer),
+            'mediation',
+            'session_resolved',
+            $workspace->id,
+            $viewer->user_id,
+            ['mediation_session_id' => $mediationSession->id],
+        );
+
         return back()->with('status', 'Mediation session resolved.');
     }
 
@@ -162,6 +220,24 @@ final class MediationController extends Controller
         $this->mediationAccess->ensureBelongsToWorkspace($mediationSession, $viewer);
 
         $this->cancelMediationSession->handle($mediationSession, (string) $request->validated('reason'));
+
+        $this->workspaceNotificationDispatcher->dispatch(
+            $this->workspaceNotificationDispatcher->otherWorkspaceUsers($workspace, $viewer),
+            'mediation_escalated',
+            'Additional support requested',
+            sprintf('%s requested more help for "%s".', $viewer->user->name, $mediationSession->subject),
+            route('mediation.show', ['mediationSession' => $mediationSession->id, 'workspace' => $workspace->id]),
+            $workspace,
+        );
+
+        $this->workspaceRealtimeDispatcher->dispatch(
+            $this->workspaceRealtimeDispatcher->otherWorkspaceUsers($workspace, $viewer),
+            'mediation',
+            'session_canceled',
+            $workspace->id,
+            $viewer->user_id,
+            ['mediation_session_id' => $mediationSession->id],
+        );
 
         return back()->with('status', 'Mediation session closed. Additional support was requested.');
     }

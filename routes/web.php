@@ -14,6 +14,8 @@ use App\Http\Controllers\FamilyCalendarController;
 use App\Http\Controllers\MomentController;
 use App\Http\Controllers\MomentReactionController;
 use App\Http\Controllers\MediationController;
+use App\Http\Controllers\MessageController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Onboarding\FamilyOnboardingController;
 use App\Http\Controllers\WorkspaceCalendarFeedController;
 use App\Http\Controllers\WorkspaceInvitationController;
@@ -43,6 +45,9 @@ Route::get('calendar-feeds/{token}/family.ics', [CalendarFeedSubscriptionControl
     ->name('calendar-feeds.show');
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::post('notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+    Route::post('notifications/{notification}/read', [NotificationController::class, 'read'])->name('notifications.read');
+
     Route::middleware('can:admin.access')->group(function () {
         Route::get('admin/mediation/escalations', [MediationEscalationController::class, 'index'])->name('admin.mediation.escalations');
     });
@@ -60,6 +65,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('workspace.subscription')->group(function () {
         Route::get('dashboard', [FamilyCalendarController::class, 'index'])->name('dashboard');
         Route::get('calendar', [FamilyCalendarController::class, 'calendar'])->name('calendar');
+        Route::middleware('workspace.feature:secure_messaging')->group(function () {
+            Route::get('messages', [MessageController::class, 'index'])->name('messages.index');
+            Route::post('messages/threads', [MessageController::class, 'storeThread'])->name('messages.threads.store');
+            Route::post('messages', [MessageController::class, 'store'])->name('messages.store');
+        });
         Route::get('moments', [MomentController::class, 'index'])->name('moments.index');
         Route::get('moments/create', [MomentController::class, 'create'])->name('moments.create');
         Route::post('moments', [MomentController::class, 'store'])->name('moments.store');

@@ -1,15 +1,16 @@
 import { type SharedData } from '@/types';
-import { Link, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { Bell, CalendarDays, Lock, LogOut, Mail, Phone } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
-type ActiveTab = 'dashboard' | 'calendar' | 'billing' | 'expenses' | 'moments' | 'mediation';
+type ActiveTab = 'dashboard' | 'calendar' | 'billing' | 'expenses' | 'messages' | 'moments' | 'mediation';
 
 const navigation = [
     { key: 'dashboard', label: 'Dashboard', href: '/dashboard', requiresAbility: null, requiresFeature: null },
     { key: 'calendar', label: 'Calendar', href: '/calendar', requiresAbility: null, requiresFeature: null },
     { key: 'billing', label: 'Billing', href: '/billing', requiresAbility: 'billing.manage', requiresFeature: null },
     { key: 'expenses', label: 'Expenses', href: '/expenses', requiresAbility: 'expenses.view', requiresFeature: 'expense_tracking' },
-    { key: 'messages', label: 'Messages', href: '#', requiresAbility: null, requiresFeature: 'secure_messaging' },
+    { key: 'messages', label: 'Messages', href: '/messages', requiresAbility: null, requiresFeature: 'secure_messaging' },
     { key: 'moments', label: 'Moments', href: '/moments', requiresAbility: null, requiresFeature: null },
     { key: 'mediation', label: 'Mediation', href: '/mediation', requiresAbility: null, requiresFeature: 'ai_tone_analysis' },
     { key: 'requests', label: 'Requests', href: '#', requiresAbility: null, requiresFeature: 'change_request_workflow' },
@@ -24,18 +25,82 @@ export default function FamilyLayout({
     workspaceId?: number;
     children: React.ReactNode;
 }) {
-    const { workspaceAccess } = usePage<SharedData>().props;
+    const { workspaceAccess, auth, notifications } = usePage<SharedData>().props;
     const dashboardHref = workspaceId ? route('dashboard', { workspace: workspaceId }) : route('dashboard');
     const calendarHref = workspaceId ? route('calendar', { workspace: workspaceId }) : route('calendar');
     const billingHref = route('billing');
     const expensesHref = workspaceId ? route('expenses.index', { workspace: workspaceId }) : route('expenses.index');
+    const messagesHref = workspaceId ? route('messages.index', { workspace: workspaceId }) : route('messages.index');
     const momentsHref = workspaceId ? route('moments.index', { workspace: workspaceId }) : route('moments.index');
     const mediationHref = workspaceId ? route('mediation.index', { workspace: workspaceId }) : route('mediation.index');
     const canUseExpenses = (workspaceAccess?.abilities?.['expenses.view'] ?? false) && (workspaceAccess?.features?.['expense_tracking'] ?? false);
+    const canUseMessages = workspaceAccess?.features?.['secure_messaging'] ?? false;
     const canUseMediation = workspaceAccess?.features?.['ai_tone_analysis'] ?? false;
     const canManageBilling = workspaceAccess?.abilities?.['billing.manage'] ?? false;
     const hasActiveSubscription = workspaceAccess?.subscription?.active ?? false;
     const shouldLockForBillingSetup = workspaceAccess !== null && !hasActiveSubscription;
+    const [notificationOpen, setNotificationOpen] = useState(false);
+    const [notificationState, setNotificationState] = useState(notifications ?? { unread_count: 0, items: [] });
+
+    useEffect(() => {
+        setNotificationState(notifications ?? { unread_count: 0, items: [] });
+    }, [notifications]);
+
+    useEffect(() => {
+        const channelName = auth.user ? `App.Models.User.${auth.user.id}` : null;
+
+        if (channelName === null || window.Echo === undefined) {
+            return;
+        }
+
+        const channel = window.Echo.private(channelName);
+
+        channel.notification((payload: Record<string, unknown>) => {
+            setNotificationState((current) => {
+                const nextItem = {
+                    id: String(payload.id ?? `${Date.now()}`),
+                    kind: String(payload.kind ?? 'general'),
+                    title: String(payload.title ?? 'Notification'),
+                    body: String(payload.body ?? ''),
+                    href: typeof payload.href === 'string' ? payload.href : null,
+                    workspace_id: typeof payload.workspace_id === 'number' ? payload.workspace_id : null,
+                    read_at: null,
+                    created_at: typeof payload.created_at === 'string' ? payload.created_at : new Date().toISOString(),
+                    created_at_label: 'Just now',
+                };
+
+                const deduped = current.items.filter((item) => item.id !== nextItem.id);
+
+                return {
+                    unread_count: current.unread_count + 1,
+                    items: [nextItem, ...deduped].slice(0, 8),
+                };
+            });
+        });
+
+        channel.listen('.workspace.ui.sync', (payload: { domain?: string; workspace_id?: number | null }) => {
+            if ((payload.domain ?? '') === 'billing' && workspaceId !== undefined && payload.workspace_id === workspaceId) {
+                router.reload({
+                    only: ['workspaceAccess', 'notifications'],
+                    preserveScroll: true,
+                    preserveState: true,
+                });
+            }
+        });
+
+        return () => {
+            channel.stopListening('.workspace.ui.sync');
+            window.Echo?.leave(channelName);
+        };
+    }, [auth.user, workspaceId]);
+
+    const unreadCountLabel = useMemo(() => {
+        if (notificationState.unread_count <= 0) {
+            return null;
+        }
+
+        return notificationState.unread_count > 99 ? '99+' : String(notificationState.unread_count);
+    }, [notificationState.unread_count]);
 
     return (
         <div className="min-h-screen bg-[#eef8f6] text-slate-900">
@@ -60,6 +125,8 @@ export default function FamilyLayout({
                                         ? billingHref
                                       : item.key === 'expenses'
                                         ? expensesHref
+                                      : item.key === 'messages'
+                                        ? messagesHref
                                       : item.key === 'moments'
                                         ? momentsHref
                                       : item.key === 'mediation'
@@ -135,13 +202,81 @@ export default function FamilyLayout({
                         })}
                     </nav>
 
-                    <div className="flex items-center gap-3">
+                    <div className="relative flex items-center gap-3">
                         <button
                             type="button"
-                            className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#67d2c3] text-white shadow-sm"
+                            onClick={() => setNotificationOpen((current) => !current)}
+                            className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-[#67d2c3] text-white shadow-sm"
                         >
                             <Bell className="size-5" />
+                            {unreadCountLabel && (
+                                <span className="absolute -right-1 -top-1 inline-flex min-w-[1.5rem] items-center justify-center rounded-full bg-[#ff8a8a] px-1.5 py-1 text-[10px] font-black text-white">
+                                    {unreadCountLabel}
+                                </span>
+                            )}
                         </button>
+
+                        {notificationOpen && (
+                            <div className="absolute right-[5.5rem] top-[4.1rem] z-30 w-[24rem] overflow-hidden rounded-[1.5rem] border border-[#dfeeed] bg-white shadow-[0_30px_70px_-40px_rgba(15,23,42,0.45)]">
+                                <div className="flex items-center justify-between gap-3 border-b border-[#edf4f3] px-5 py-4">
+                                    <div>
+                                        <p className="text-sm font-black uppercase tracking-[0.2em] text-[#67d2c3]">Notifications</p>
+                                        <p className="mt-1 text-sm text-slate-500">{notificationState.unread_count} unread</p>
+                                    </div>
+
+                                    <Link
+                                        href={route('notifications.read-all')}
+                                        method="post"
+                                        as="button"
+                                        onSuccess={() => {
+                                            setNotificationState((current) => ({
+                                                unread_count: 0,
+                                                items: current.items.map((item) => ({ ...item, read_at: item.read_at ?? new Date().toISOString() })),
+                                            }));
+                                        }}
+                                        className="text-xs font-black uppercase tracking-[0.14em] text-[#67d2c3]"
+                                    >
+                                        Mark all read
+                                    </Link>
+                                </div>
+
+                                <div className="max-h-[24rem] overflow-y-auto">
+                                    {notificationState.items.length === 0 ? (
+                                        <div className="px-5 py-8 text-center text-sm text-slate-500">No notifications yet.</div>
+                                    ) : (
+                                        notificationState.items.map((item) => (
+                                            <Link
+                                                key={item.id}
+                                                href={route('notifications.read', { notification: item.id })}
+                                                method="post"
+                                                data={{ redirect_to: item.href ?? route('dashboard') }}
+                                                as="button"
+                                                className={`block w-full border-b border-[#edf4f3] px-5 py-4 text-left transition hover:bg-[#f8fbfb] ${
+                                                    item.read_at ? 'bg-white' : 'bg-[#f4fbf9]'
+                                                }`}
+                                                onSuccess={() => {
+                                                    setNotificationState((current) => ({
+                                                        unread_count: item.read_at ? current.unread_count : Math.max(current.unread_count - 1, 0),
+                                                        items: current.items.map((entry) => (entry.id === item.id ? { ...entry, read_at: entry.read_at ?? new Date().toISOString() } : entry)),
+                                                    }));
+                                                    setNotificationOpen(false);
+                                                }}
+                                            >
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div className="min-w-0">
+                                                        <p className="font-black text-slate-900">{item.title}</p>
+                                                        <p className="mt-1 text-sm leading-6 text-slate-500">{item.body}</p>
+                                                    </div>
+                                                    {!item.read_at && <span className="mt-1 inline-flex h-2.5 w-2.5 rounded-full bg-[#67d2c3]" />}
+                                                </div>
+                                                <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">{item.created_at_label ?? 'Now'}</p>
+                                            </Link>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         <Link
                             href={route('logout')}
                             method="post"
@@ -178,7 +313,16 @@ export default function FamilyLayout({
                                 <Link href={billingHref} className="transition hover:text-white">
                                     Billing
                                 </Link>
-                                <span>Messages</span>
+                                {hasActiveSubscription ? (
+                                    <Link
+                                        href={canUseMessages ? messagesHref : route('billing', { plan: 'plus', mode: 'family' })}
+                                        className="transition hover:text-white"
+                                    >
+                                        Messages
+                                    </Link>
+                                ) : (
+                                    <span className="text-white/40">Messages</span>
+                                )}
                                 {hasActiveSubscription ? (
                                     <Link href={momentsHref} className="transition hover:text-white">
                                         Moments

@@ -14,6 +14,8 @@ use App\Models\MomentReaction;
 use App\Models\Workspace;
 use App\Models\WorkspaceMember;
 use App\Support\Moments\MomentAccess;
+use App\Support\Notifications\WorkspaceNotificationDispatcher;
+use App\Support\Realtime\WorkspaceRealtimeDispatcher;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,6 +30,8 @@ class MomentController extends Controller
     public function __construct(
         private readonly MomentAccess $momentAccess,
         private readonly StoreMoment $storeMoment,
+        private readonly WorkspaceNotificationDispatcher $workspaceNotificationDispatcher,
+        private readonly WorkspaceRealtimeDispatcher $workspaceRealtimeDispatcher,
     ) {
     }
 
@@ -80,9 +84,29 @@ class MomentController extends Controller
         $workspace = Workspace::query()->findOrFail((int) $request->validated('workspace_id'));
         $viewer = $this->momentAccess->resolveWorkspaceMember($workspace, $request->user());
 
-        $this->storeMoment->handle(
+        $moment = $this->storeMoment->handle(
             StoreMomentData::fromValidated($request->validated(), $workspace->id, $viewer->id),
         );
+
+        if ($moment->visibility->value === 'family') {
+            $this->workspaceNotificationDispatcher->dispatch(
+                $this->workspaceNotificationDispatcher->otherWorkspaceUsers($workspace, $viewer),
+                'moment_shared',
+                'New family moment',
+                sprintf('%s shared a new moment.', $viewer->user->name),
+                route('moments.index', ['workspace' => $workspace->id]),
+                $workspace,
+            );
+
+            $this->workspaceRealtimeDispatcher->dispatch(
+                $this->workspaceRealtimeDispatcher->otherWorkspaceUsers($workspace, $viewer),
+                'moments',
+                'moment_created',
+                $workspace->id,
+                $viewer->user_id,
+                ['moment_id' => $moment->id],
+            );
+        }
 
         return to_route('moments.index', ['workspace' => $workspace->id])
             ->with('status', 'Moment shared!');
@@ -92,6 +116,8 @@ class MomentController extends Controller
     {
         $workspace = Workspace::query()->findOrFail($moment->workspace_id);
         $viewer = $this->momentAccess->resolveWorkspaceMember($workspace, $request->user());
+        $shouldSyncFamilyFeed = $moment->visibility === MomentVisibility::Family;
+        $momentId = $moment->id;
 
         if (! $this->momentAccess->canDelete($moment, $viewer)) {
             throw new AuthorizationException('You cannot delete this moment.');
@@ -99,6 +125,17 @@ class MomentController extends Controller
 
         Storage::disk('local')->delete($moment->photo_path);
         $moment->delete();
+
+        if ($shouldSyncFamilyFeed) {
+            $this->workspaceRealtimeDispatcher->dispatch(
+                $this->workspaceRealtimeDispatcher->otherWorkspaceUsers($workspace, $viewer),
+                'moments',
+                'moment_deleted',
+                $workspace->id,
+                $viewer->user_id,
+                ['moment_id' => $momentId],
+            );
+        }
 
         return back()->with('status', 'Moment deleted.');
     }

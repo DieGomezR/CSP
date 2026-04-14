@@ -48,6 +48,20 @@ export interface SharedData {
     security?: {
         csrf_token?: string | null;
     };
+    notifications?: {
+        unread_count: number;
+        items: Array<{
+            id: string;
+            kind: string;
+            title: string;
+            body: string;
+            href?: string | null;
+            workspace_id?: number | null;
+            read_at?: string | null;
+            created_at?: string | null;
+            created_at_label?: string | null;
+        }>;
+    };
     flash: {
         status?: string | null;
         error?: string | null;

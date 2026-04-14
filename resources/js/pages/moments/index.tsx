@@ -1,10 +1,11 @@
 import FamilyLayout from '@/components/family-layout';
+import { useUserRealtimeSync } from '@/hooks/use-user-realtime-sync';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { type SharedData } from '@/types';
 import { type MomentItem, type MomentWorkspace } from '@/types/moments';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Camera, Loader2, Lock, Plus, Trash2, Users } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 type Props = {
     workspace: MomentWorkspace;
@@ -17,7 +18,7 @@ const visibilityIcons: Record<string, typeof Users> = {
 };
 
 export default function MomentsIndexPage({ workspace, moments }: Props) {
-    const { flash } = usePage<SharedData>().props;
+    const { flash, auth } = usePage<SharedData>().props;
     const [selectedMoment, setSelectedMoment] = useState<MomentItem | null>(null);
     const [momentToDelete, setMomentToDelete] = useState<MomentItem | null>(null);
     const [pendingAction, setPendingAction] = useState<string | null>(null);
@@ -50,6 +51,33 @@ export default function MomentsIndexPage({ workspace, moments }: Props) {
             onFinish: () => setPendingAction(null),
         });
     };
+
+    useEffect(() => {
+        if (selectedMoment !== null) {
+            setSelectedMoment(moments.find((moment) => moment.id === selectedMoment.id) ?? null);
+        }
+
+        if (momentToDelete !== null) {
+            setMomentToDelete(moments.find((moment) => moment.id === momentToDelete.id) ?? null);
+        }
+    }, [momentToDelete, moments, selectedMoment]);
+
+    const handleRealtimeSync = useCallback(
+        (payload: { domain: string; workspace_id: number; actor_user_id?: number | null }) => {
+            if (payload.domain !== 'moments' || payload.workspace_id !== workspace.id || payload.actor_user_id === auth.user.id) {
+                return;
+            }
+
+            router.reload({
+                only: ['moments'],
+                preserveScroll: true,
+                preserveState: true,
+            });
+        },
+        [auth.user.id, workspace.id],
+    );
+
+    useUserRealtimeSync(handleRealtimeSync);
 
     return (
         <>

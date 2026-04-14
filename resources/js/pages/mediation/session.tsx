@@ -1,10 +1,11 @@
 import FamilyLayout from '@/components/family-layout';
+import { useUserRealtimeSync } from '@/hooks/use-user-realtime-sync';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { type SharedData } from '@/types';
 import { type MediationSessionDetail, type MediationWorkspace } from '@/types/mediation';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { Bot, Loader2, Sparkles, TriangleAlert } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 type Props = {
     workspace: MediationWorkspace;
@@ -20,7 +21,7 @@ function createClientRequestId(): string {
 }
 
 export default function MediationSessionPage({ workspace, session }: Props) {
-    const { flash } = usePage<SharedData>().props;
+    const { flash, auth } = usePage<SharedData>().props;
     const [resolveOpen, setResolveOpen] = useState(false);
     const [cancelOpen, setCancelOpen] = useState(false);
     const [sending, setSending] = useState(false);
@@ -64,6 +65,28 @@ export default function MediationSessionPage({ workspace, session }: Props) {
             { preserveScroll: true },
         );
     };
+
+    const handleRealtimeSync = useCallback(
+        (payload: { domain: string; workspace_id: number; mediation_session_id?: number | null; actor_user_id?: number | null }) => {
+            if (
+                payload.domain !== 'mediation' ||
+                payload.workspace_id !== workspace.id ||
+                payload.mediation_session_id !== session.id ||
+                payload.actor_user_id === auth.user.id
+            ) {
+                return;
+            }
+
+            router.reload({
+                only: ['session'],
+                preserveScroll: true,
+                preserveState: true,
+            });
+        },
+        [auth.user.id, session.id, workspace.id],
+    );
+
+    useUserRealtimeSync(handleRealtimeSync);
 
     return (
         <>

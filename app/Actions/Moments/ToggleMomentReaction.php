@@ -11,7 +11,10 @@ use App\Models\WorkspaceMember;
 
 final class ToggleMomentReaction
 {
-    public function handle(Moment $moment, WorkspaceMember $viewer, string $reaction): void
+    /**
+     * @return array{status:'added'|'removed',reaction:MomentReactionType}
+     */
+    public function handle(Moment $moment, WorkspaceMember $viewer, string $reaction): array
     {
         $reactionType = MomentReactionType::from($reaction);
         $existingReaction = $moment->reactions()
@@ -20,7 +23,10 @@ final class ToggleMomentReaction
 
         if ($existingReaction instanceof MomentReaction && $existingReaction->reaction === $reactionType) {
             $existingReaction->delete();
-            return;
+            return [
+                'status' => 'removed',
+                'reaction' => $reactionType,
+            ];
         }
 
         $moment->reactions()->updateOrCreate(
@@ -31,5 +37,10 @@ final class ToggleMomentReaction
                 'reaction' => $reactionType,
             ],
         );
+
+        return [
+            'status' => 'added',
+            'reaction' => $reactionType,
+        ];
     }
 }

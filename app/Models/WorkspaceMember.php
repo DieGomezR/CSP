@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -14,6 +15,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $user_id
  * @property string $role
  * @property string $status
+ * @property Carbon|null $joined_at
+ * @property Carbon|null $created_at
  * @property-read Workspace $workspace
  * @property-read User $user
  */
@@ -97,5 +100,21 @@ class WorkspaceMember extends Model
     public function mediationMessages(): HasMany
     {
         return $this->hasMany(MediationMessage::class);
+    }
+
+    /**
+     * @return HasMany<WorkspaceMessage, self>
+     */
+    public function workspaceMessages(): HasMany
+    {
+        return $this->hasMany(WorkspaceMessage::class);
+    }
+
+    /**
+     * @return HasMany<WorkspaceMessageThread, self>
+     */
+    public function createdMessageThreads(): HasMany
+    {
+        return $this->hasMany(WorkspaceMessageThread::class, 'created_by_member_id');
     }
 }

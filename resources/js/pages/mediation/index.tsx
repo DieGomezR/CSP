@@ -1,8 +1,10 @@
 import FamilyLayout from '@/components/family-layout';
+import { useUserRealtimeSync } from '@/hooks/use-user-realtime-sync';
 import { type SharedData } from '@/types';
 import { type MediationSessionCard, type MediationWarning, type MediationWorkspace } from '@/types/mediation';
-import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { AlertTriangle, FileText, Loader2, MessageSquareHeart, ShieldCheck } from 'lucide-react';
+import { useCallback } from 'react';
 
 type Props = {
     workspace: MediationWorkspace;
@@ -28,7 +30,7 @@ const statusStyles: Record<string, string> = {
 };
 
 export default function MediationIndexPage({ workspace, stats, activeWarnings, activeSession, history }: Props) {
-    const { flash } = usePage<SharedData>().props;
+    const { flash, auth } = usePage<SharedData>().props;
     const form = useForm({
         subject: '',
     });
@@ -40,6 +42,23 @@ export default function MediationIndexPage({ workspace, stats, activeWarnings, a
             preserveScroll: true,
         });
     };
+
+    const handleRealtimeSync = useCallback(
+        (payload: { domain: string; workspace_id: number; actor_user_id?: number | null }) => {
+            if (payload.domain !== 'mediation' || payload.workspace_id !== workspace.id || payload.actor_user_id === auth.user.id) {
+                return;
+            }
+
+            router.reload({
+                only: ['stats', 'activeWarnings', 'activeSession', 'history'],
+                preserveScroll: true,
+                preserveState: true,
+            });
+        },
+        [auth.user.id, workspace.id],
+    );
+
+    useUserRealtimeSync(handleRealtimeSync);
 
     return (
         <>

@@ -9,17 +9,24 @@ use App\Notifications\Billing\SubscriptionCanceledNotification;
 use App\Notifications\Billing\SubscriptionChangedNotification;
 use App\Notifications\Billing\SubscriptionConfirmedNotification;
 use App\Support\Billing\BillingPlanCatalog;
+use App\Support\Notifications\WorkspaceNotificationDispatcher;
+use App\Support\Realtime\WorkspaceRealtimeDispatcher;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Arr;
+use App\Models\Workspace;
 use Laravel\Cashier\Events\WebhookHandled;
 
 final class SendBillingLifecycleEmails implements ShouldQueue
 {
     use InteractsWithQueue;
 
-    public function __construct(private readonly BillingPlanCatalog $billingPlanCatalog)
+    public function __construct(
+        private readonly BillingPlanCatalog $billingPlanCatalog,
+        private readonly WorkspaceNotificationDispatcher $workspaceNotificationDispatcher,
+        private readonly WorkspaceRealtimeDispatcher $workspaceRealtimeDispatcher,
+    )
     {
     }
 
@@ -60,6 +67,33 @@ final class SendBillingLifecycleEmails implements ShouldQueue
             plan: $currentPlan,
             trialEndsAt: $trialEndsAt,
         ));
+
+        $this->workspaceNotificationDispatcher->dispatch(
+            collect([$user]),
+            'billing_confirmed',
+            'Subscription confirmed',
+            sprintf('Your %s plan is active.', $currentPlan['label']),
+            route('billing'),
+        );
+
+        foreach ($this->resolveOwnedFamilyWorkspaces($user) as $workspace) {
+            $this->workspaceNotificationDispatcher->dispatch(
+                $this->workspaceNotificationDispatcher->workspaceUsers($workspace),
+                'billing_confirmed',
+                'Family subscription confirmed',
+                sprintf('The workspace is now on %s.', $currentPlan['label']),
+                route('billing'),
+                $workspace,
+            );
+
+            $this->workspaceRealtimeDispatcher->dispatch(
+                $this->workspaceRealtimeDispatcher->workspaceUsers($workspace),
+                'billing',
+                'subscription_confirmed',
+                $workspace->id,
+                $user->id,
+            );
+        }
     }
 
     /**
@@ -96,6 +130,33 @@ final class SendBillingLifecycleEmails implements ShouldQueue
             previousPlan: $previousPlan,
             currentPlan: $currentPlan,
         ));
+
+        $this->workspaceNotificationDispatcher->dispatch(
+            collect([$user]),
+            'billing_changed',
+            'Subscription updated',
+            sprintf('Your plan changed from %s to %s.', $previousPlan['label'], $currentPlan['label']),
+            route('billing'),
+        );
+
+        foreach ($this->resolveOwnedFamilyWorkspaces($user) as $workspace) {
+            $this->workspaceNotificationDispatcher->dispatch(
+                $this->workspaceNotificationDispatcher->workspaceUsers($workspace),
+                'billing_changed',
+                'Family subscription updated',
+                sprintf('The workspace plan changed from %s to %s.', $previousPlan['label'], $currentPlan['label']),
+                route('billing'),
+                $workspace,
+            );
+
+            $this->workspaceRealtimeDispatcher->dispatch(
+                $this->workspaceRealtimeDispatcher->workspaceUsers($workspace),
+                'billing',
+                'subscription_changed',
+                $workspace->id,
+                $user->id,
+            );
+        }
     }
 
     /**
@@ -124,6 +185,33 @@ final class SendBillingLifecycleEmails implements ShouldQueue
             plan: $currentPlan,
             endedAt: $endedAt,
         ));
+
+        $this->workspaceNotificationDispatcher->dispatch(
+            collect([$user]),
+            'billing_canceled',
+            'Subscription canceled',
+            sprintf('Your %s plan was canceled.', $currentPlan['label']),
+            route('billing'),
+        );
+
+        foreach ($this->resolveOwnedFamilyWorkspaces($user) as $workspace) {
+            $this->workspaceNotificationDispatcher->dispatch(
+                $this->workspaceNotificationDispatcher->workspaceUsers($workspace),
+                'billing_canceled',
+                'Family subscription canceled',
+                sprintf('The workspace %s plan was canceled.', $currentPlan['label']),
+                route('billing'),
+                $workspace,
+            );
+
+            $this->workspaceRealtimeDispatcher->dispatch(
+                $this->workspaceRealtimeDispatcher->workspaceUsers($workspace),
+                'billing',
+                'subscription_canceled',
+                $workspace->id,
+                $user->id,
+            );
+        }
     }
 
     /**
@@ -163,5 +251,19 @@ final class SendBillingLifecycleEmails implements ShouldQueue
         }
 
         return CarbonImmutable::createFromTimestamp((int) $timestamp);
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, Workspace>
+     */
+    private function resolveOwnedFamilyWorkspaces(User $user): \Illuminate\Support\Collection
+    {
+        /** @var \Illuminate\Support\Collection<int, Workspace> $workspaces */
+        $workspaces = $user->ownedWorkspaces()
+            ->where('type', 'family')
+            ->with('members.user:id,name,email')
+            ->get();
+
+        return $workspaces;
     }
 }

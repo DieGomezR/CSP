@@ -1,9 +1,10 @@
 import FamilyLayout from '@/components/family-layout';
+import { useUserRealtimeSync } from '@/hooks/use-user-realtime-sync';
 import { type SharedData } from '@/types';
 import { type ExpenseRecord, type ExpenseSummaryCard, type ExpenseWorkspace } from '@/types/expenses';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Check, Pencil, RotateCcw, Trash2, Wallet } from 'lucide-react';
-import { type FormEvent } from 'react';
+import { type FormEvent, useCallback } from 'react';
 
 type Props = {
     workspace: ExpenseWorkspace;
@@ -23,7 +24,7 @@ type Props = {
 };
 
 export default function ExpensesIndex({ workspace, summary, filters, categories, expenses }: Props) {
-    const { flash } = usePage<SharedData>().props;
+    const { flash, auth } = usePage<SharedData>().props;
 
     const submitFilter = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -62,6 +63,23 @@ export default function ExpensesIndex({ workspace, summary, filters, categories,
 
         router.delete(route('expenses.destroy', expenseId), { preserveScroll: true });
     };
+
+    const handleRealtimeSync = useCallback(
+        (payload: { domain: string; workspace_id: number; actor_user_id?: number | null }) => {
+            if (payload.domain !== 'expenses' || payload.workspace_id !== workspace.id || payload.actor_user_id === auth.user.id) {
+                return;
+            }
+
+            router.reload({
+                only: ['summary', 'expenses'],
+                preserveScroll: true,
+                preserveState: true,
+            });
+        },
+        [auth.user.id, workspace.id],
+    );
+
+    useUserRealtimeSync(handleRealtimeSync);
 
     return (
         <>

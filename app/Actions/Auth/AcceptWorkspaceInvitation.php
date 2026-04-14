@@ -7,12 +7,18 @@ namespace App\Actions\Auth;
 use App\Models\User;
 use App\Models\WorkspaceInvitation;
 use App\Models\WorkspaceMember;
+use App\Support\Auth\EnsureApplicationRoles;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
 final class AcceptWorkspaceInvitation
 {
+    public function __construct(
+        private readonly EnsureApplicationRoles $ensureApplicationRoles,
+    ) {
+    }
+
     public function handle(User $user, WorkspaceInvitation $invitation, bool $smsOptIn = false): WorkspaceInvitation
     {
         $this->guardInvitationForUser($user, $invitation);
@@ -40,6 +46,7 @@ final class AcceptWorkspaceInvitation
                 'accepted_at' => now(),
             ])->save();
 
+            $this->ensureApplicationRoles->handle();
             $user->assignRole($this->resolveApplicationRole($invitation->role));
 
             return $invitation->fresh(['workspace', 'invitedBy']) ?? $invitation->loadMissing(['workspace', 'invitedBy']);
